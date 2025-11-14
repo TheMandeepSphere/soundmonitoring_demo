@@ -8,11 +8,9 @@
   <!-- Chart.js + zoom plugin -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+
   <!-- jsPDF -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <!-- Firebase (optional - uncomment when you paste your firebaseConfig) -->
-  <!-- <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-app-compat.js"></script> -->
-  <!-- <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-database-compat.js"></script> -->
 
   <style>
     :root{
@@ -28,408 +26,493 @@
       --radius: 12px;
     }
     body{
-      margin:0;font-family:Inter,system-ui,Arial; background:var(--bg-dark);color:#eaf9fb;overflow:hidden;
+      margin:0;
+      font-family:Inter,system-ui,Arial;
+      background:var(--bg-dark);
+      color:#eaf9fb;
+      overflow:hidden;
     }
-    /* full-screen reactive canvas behind UI */
-    #bgCanvas{ position:fixed; inset:0; z-index:0; }
-    .app{
-      position:relative; z-index:2; padding:18px; display:grid; grid-template-columns:1fr; gap:14px; height:100vh; box-sizing:border-box;
-    }
-    @media(min-width:920px){ .app{ grid-template-columns:360px 1fr; } }
-    header{ display:flex; justify-content:space-between; align-items:center; gap:12px; }
-    .brand{ display:flex; gap:12px; align-items:center; }
-    .logo{ width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent2)); display:grid;place-items:center;color:#000;font-weight:800;}
-    h1{ margin:0; font-size:18px; }
-    nav{ display:flex; gap:8px; align-items:center; }
 
-    .card{ background:var(--card); border-radius:var(--radius); padding:14px; border:1px solid var(--glass); box-shadow: 0 10px 30px rgba(0,0,0,0.6); }
+    /* full-screen reactive background */
+    #bgCanvas{
+      position:fixed;
+      inset:0;
+      z-index:0;
+    }
+
+    .app{
+      position:relative;
+      z-index:2;
+      padding:18px;
+      display:grid;
+      grid-template-columns:1fr;
+      gap:14px;
+      height:100vh;
+      box-sizing:border-box;
+      overflow-y:auto;
+    }
+    @media(min-width:920px){
+      .app{
+        grid-template-columns:360px 1fr;
+      }
+    }
+
+    .card{
+      background:var(--card);
+      border-radius:var(--radius);
+      padding:14px;
+      border:1px solid var(--glass);
+      box-shadow:0 10px 30px rgba(0,0,0,0.6);
+    }
+
     .small{ font-size:13px; color:var(--muted); }
 
-    /* controls */
-    .row{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
-    .btn{ padding:8px 12px; border-radius:10px; background:linear-gradient(90deg, rgba(0,240,255,0.12), rgba(138,76,255,0.08)); border:1px solid rgba(255,255,255,0.04); color:var(--accent); font-weight:700; cursor:pointer; }
-    .btn.ghost{ background:transparent; border:1px dashed var(--glass); color:var(--muted); }
+    .btn{
+      padding:8px 12px;
+      border-radius:10px;
+      background:linear-gradient(90deg,
+        rgba(0,240,255,0.12),
+        rgba(138,76,255,0.08));
+      border:1px solid rgba(255,255,255,0.04);
+      color:var(--accent);
+      font-weight:700;
+      cursor:pointer;
+    }
 
-    /* gauge */
-    .gauge-card{ display:flex; gap:12px; align-items:center; flex-direction:column; }
-    .gauge-svg{ width:240px; height:120px; }
-    .db-big{ font-size:28px; font-weight:800; color:var(--accent); }
-    .gauge-center{ display:flex; flex-direction:column; align-items:center; gap:6px; }
+    .btn.ghost{
+      background:transparent;
+      border:1px dashed var(--glass);
+      color:var(--muted);
+    }
 
-    /* chart */
+    .history-list{
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      margin-top:10px;
+      max-height:360px;
+      overflow:auto;
+    }
+
     .chart-box{ height:300px; }
-
-    /* fft */
     .fft-box{ height:160px; margin-top:10px; }
 
-    /* history */
-    .history-list{ display:flex; flex-direction:column; gap:8px; margin-top:10px; max-height:360px; overflow:auto; }
+    /* gauge */
+    .gauge-svg{ width:240px; height:120px; }
+    .db-big{ font-size:28px; font-weight:800; color:var(--accent); }
 
-    /* footer small */
-    footer{ margin-top:8px; color:var(--muted); font-size:13px; }
-
-    /* top-left UI container */
-    .left-column{ display:flex; flex-direction:column; gap:12px; }
-
-    /* small badges */
-    .badge{ padding:6px 8px; border-radius:8px; background:rgba(255,255,255,0.02); font-weight:700; color:var(--muted); }
-
-    /* responsive small */
-    @media(max-width:640px){
-      .gauge-svg{ width:180px; height:90px; }
-      .db-big{ font-size:22px; }
-    }
   </style>
 </head>
+
 <body>
 
-  <canvas id="bgCanvas"></canvas>
+<canvas id="bgCanvas"></canvas>
 
-  <div class="app">
-    <!-- LEFT -->
-    <div class="left-column">
-      <div class="card">
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <div class="brand"><div class="logo">SM</div><div><h1>Sound Monitor</h1><div class="small">Live • FFT • History</div></div></div>
-          <div style="display:flex;gap:8px">
-            <button id="startBtn" class="btn">Start</button>
-            <button id="saveLocalBtn" class="btn ghost">Save</button>
-          </div>
-        </div>
+<div class="app">
 
-        <div style="margin-top:12px" class="gauge-card">
-          <svg class="gauge-svg" viewBox="0 0 240 120" preserveAspectRatio="xMidYMid meet">
-            <!-- zones: green / yellow / red -->
-            <path d="M20 100 A100 100 0 0 1 220 100" stroke="var(--ok)" stroke-width="14" fill="none" stroke-linecap="round" opacity="0.7"/>
-            <path d="M40 100 A80 80 0 0 1 200 100" stroke="var(--warn)" stroke-width="14" fill="none" stroke-linecap="round" opacity="0.6"/>
-            <path d="M60 100 A60 60 0 0 1 180 100" stroke="var(--danger)" stroke-width="14" fill="none" stroke-linecap="round" opacity="0.45"/>
-            <!-- needle -->
-            <g id="needle" transform="translate(120,100) rotate(-90)">
-              <line x1="0" y1="0" x2="0" y2="-72" stroke="#fff" stroke-width="3" stroke-linecap="round" />
-              <circle cx="0" cy="0" r="6" fill="#fff"></circle>
-            </g>
-            <!-- center label -->
-            <text id="dbText" x="120" y="88" font-size="16" text-anchor="middle" fill="var(--accent)">-- dB</text>
-          </svg>
-
-          <div class="gauge-center">
-            <div class="db-big" id="dbBig">-- dB</div>
-            <div class="small">Current Level</div>
-          </div>
-        </div>
-
-        <div style="margin-top:12px" class="row">
-          <div class="small">Threshold</div>
-          <div style="display:flex;gap:8px;align-items:center">
-            <input id="thresholdRange" type="range" min="30" max="120" value="60" />
-            <div class="badge" id="thVal">60 dB</div>
-          </div>
-        </div>
-
-        <div style="margin-top:10px" class="row">
-          <div class="small">Status</div>
-          <div id="status" class="small">Idle</div>
-        </div>
-
-        <div style="margin-top:10px;display:flex;gap:8px;justify-content:space-between">
+  <!-- LEFT COLUMN -->
+  <div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div style="display:flex;gap:10px;align-items:center">
+          <div style="width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,#00f0ff,#8a4cff);display:grid;place-items:center;font-weight:800;color:#000">SM</div>
           <div>
-            <div class="small">Max</div><div id="maxVal" style="font-weight:700">--</div>
-          </div>
-          <div>
-            <div class="small">Min</div><div id="minVal" style="font-weight:700">--</div>
-          </div>
-          <div>
-            <div class="small">Avg</div><div id="avgVal" style="font-weight:700">--</div>
+            <h2 style="margin:0;color:var(--accent)">Sound Monitor</h2>
+            <div class="small">Real-time analysis • FFT • History</div>
           </div>
         </div>
-
-        <footer>Tip: allow microphone on your phone for accurate readings.</footer>
+        
+        <div style="display:flex;gap:8px">
+          <button id="startBtn" class="btn">Start</button>
+          <button id="saveLocalBtn" class="btn ghost">Save</button>
+        </div>
       </div>
 
-      <div class="card">
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <div><div class="small">History</div><div style="font-weight:800">Saved Days</div></div>
-          <div><button id="clearHistory" class="btn ghost">Clear All</button></div>
+      <!-- G A U G E -->
+      <div style="margin-top:14px;text-align:center">
+        <svg class="gauge-svg" viewBox="0 0 240 120">
+          
+          <!-- green zone -->
+          <path d="M20 100 A100 100 0 0 1 220 100"
+                stroke="var(--ok)" stroke-width="14"
+                stroke-linecap="round" fill="none" opacity="0.7"/>
+
+          <!-- yellow zone -->
+          <path d="M40 100 A80 80 0 0 1 200 100"
+                stroke="var(--warn)" stroke-width="14"
+                stroke-linecap="round" fill="none" opacity="0.6"/>
+
+          <!-- red zone -->
+          <path d="M60 100 A60 60 0 0 1 180 100"
+                stroke="var(--danger)" stroke-width="14"
+                stroke-linecap="round" fill="none" opacity="0.45"/>
+
+          <!-- needle -->
+          <g id="needle" transform="translate(120,100) rotate(-90)">
+            <line x1="0" y1="0" x2="0" y2="-70" stroke="#fff" stroke-width="3" stroke-linecap="round" />
+            <circle cx="0" cy="0" r="6" fill="#fff"></circle>
+          </g>
+
+          <text id="dbText"
+                x="120" y="88"
+                text-anchor="middle"
+                font-size="16"
+                fill="var(--accent)">-- dB</text>
+
+        </svg>
+
+        <div class="db-big" id="dbBig">-- dB</div>
+        <div class="small">Current Level</div>
+      </div>
+
+      <!-- Threshold -->
+      <div style="margin-top:10px;display:flex;justify-content:space-between;align-items:center">
+        <div class="small">Threshold</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <input id="thresholdRange" type="range" min="30" max="120" value="60"/>
+          <div id="thVal" class="small">60 dB</div>
         </div>
-        <div id="historyList" class="history-list"></div>
+      </div>
+
+      <!-- Stats -->
+      <div style="margin-top:10px;display:flex;justify-content:space-between">
+        <div><div class="small">Max</div><div id="maxVal"></div></div>
+        <div><div class="small">Min</div><div id="minVal"></div></div>
+        <div><div class="small">Avg</div><div id="avgVal"></div></div>
+      </div>
+
+      <div class="small" style="margin-top:4px">Samples: <span id="countVal">0</span></div>
+      <div class="small">Status: <span id="status">Idle</span></div>
+
+    </div>
+
+    <!-- HISTORY CARD -->
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div class="small">History</div>
+          <div style="font-weight:800">Saved Sessions</div>
+        </div>
+        <button id="clearHistory" class="btn ghost">Clear All</button>
+      </div>
+
+      <div id="historyList" class="history-list"></div>
+    </div>
+
+  </div>
+
+  <!-- RIGHT COLUMN -->
+  <div class="card">
+
+    <!-- graph header -->
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div class="small">Live</div>
+        <div style="font-weight:800">Sound Graph</div>
+      </div>
+
+      <div style="display:flex;gap:8px;align-items:center">
+        <button id="graphModeBtn" class="btn">Mode: Fixed</button>
+        <button id="zoomReset" class="btn ghost">Reset Zoom</button>
       </div>
     </div>
 
-    <!-- RIGHT -->
-    <div>
-      <div class="card">
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <div><div class="small">Live</div><div style="font-weight:800">Live Graph</div></div>
-          <div style="display:flex;gap:8px;align-items:center">
-            <button id="graphModeBtn" class="btn">Mode: Fixed</button>
-            <button id="zoomReset" class="btn ghost">Reset Zoom</button>
-            <div class="small">Samples: <span id="countVal">0</span></div>
-          </div>
+    <!-- LIVE CHART -->
+    <div style="margin-top:10px" class="chart-box">
+      <canvas id="liveChart"></canvas>
+    </div>
+    <!-- FFT SECTION -->
+    <div style="margin-top:20px" class="fft-box card">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div class="small">Frequency</div>
+          <div style="font-weight:800">FFT Spectrum</div>
         </div>
-
-        <div style="margin-top:12px" class="chart-box">
-          <canvas id="liveChart"></canvas>
-        </div>
-
-        <div style="margin-top:10px" class="fft-box card" id="fftCard">
-          <div style="display:flex;justify-content:space-between;align-items:center">
-            <div><div class="small">Frequency</div><div style="font-weight:800">FFT Spectrum</div></div>
-            <div class="small">Bins: <span id="fftBins">--</span></div>
-          </div>
-          <canvas id="fftCanvas" height="120" style="width:100%;"></canvas>
-        </div>
-
-        <div style="margin-top:10px;display:flex;gap:8px;justify-content:flex-end">
-          <button id="exportBtn" class="btn">Export PDF</button>
-          <button id="uploadFirebaseBtn" class="btn ghost">Upload (Firebase)</button>
-        </div>
+        <div class="small">Bins: <span id="fftBins">--</span></div>
       </div>
+
+      <canvas id="fftCanvas" height="120" style="width:100%"></canvas>
+    </div>
+
+    <div style="margin-top:12px;display:flex;gap:10px;justify-content:flex-end">
+      <button id="exportBtn" class="btn">Export PDF</button>
+      <button id="uploadFirebaseBtn" class="btn ghost">Upload</button>
     </div>
   </div>
+</div>
+
 
 <script>
 /* ===========================
-   Reactive background canvas
-   =========================== */
+   REACTIVE BACKGROUND
+=========================== */
 const bg = document.getElementById('bgCanvas');
 const dpr = window.devicePixelRatio || 1;
-function setupBG(){
+
+function resizeBG() {
   bg.width = innerWidth * dpr;
   bg.height = innerHeight * dpr;
-  bg.style.width = innerWidth + 'px';
-  bg.style.height = innerHeight + 'px';
+  bg.style.width = innerWidth + "px";
+  bg.style.height = innerHeight + "px";
 }
-setupBG();
-window.addEventListener('resize', setupBG);
-const bgCtx = bg.getContext('2d');
+resizeBG();
+window.addEventListener("resize", resizeBG);
+
+const bgCtx = bg.getContext("2d");
 let particles = [];
-for(let i=0;i<80;i++){
+for (let i = 0; i < 80; i++) {
   particles.push({
-    x: Math.random()*innerWidth,
-    y: Math.random()*innerHeight,
-    r: Math.random()*2+1,
-    vx: (Math.random()-0.5)*0.3,
-    vy: (Math.random()-0.5)*0.3,
-    hue: Math.random()*360
+    x: Math.random() * innerWidth,
+    y: Math.random() * innerHeight,
+    r: Math.random() * 2 + 1,
+    vx: (Math.random() - 0.5) * 0.3,
+    vy: (Math.random() - 0.5) * 0.3,
+    hue: Math.random() * 360
   });
 }
-let bgAmplitude = 0;
-function drawBG(){
+
+let bgAmp = 0;
+function drawBG() {
   bgCtx.clearRect(0,0,bg.width,bg.height);
-  // subtle radial gradient
-  const g = bgCtx.createRadialGradient(innerWidth*dpr*0.2, innerHeight*dpr*0.1, 0, innerWidth*dpr*0.5, innerHeight*dpr*0.6, Math.max(innerWidth,innerHeight)*dpr);
-  g.addColorStop(0, 'rgba(0,240,255,0.02)');
-  g.addColorStop(1, 'rgba(0,0,0,0)');
-  bgCtx.fillStyle = g; bgCtx.fillRect(0,0,bg.width,bg.height);
-  particles.forEach(p=>{
-    // move
-    p.x += p.vx * (1+bgAmplitude*6);
-    p.y += p.vy * (1+bgAmplitude*6);
-    // wrap
-    if(p.x < -50) p.x = innerWidth+50;
-    if(p.x > innerWidth+50) p.x = -50;
-    if(p.y < -50) p.y = innerHeight+50;
-    if(p.y > innerHeight+50) p.y = -50;
-    // draw
-    const size = (p.r + 1 + bgAmplitude*8) * dpr;
+
+  const g = bgCtx.createRadialGradient(
+    innerWidth * dpr * 0.2, innerHeight * dpr * 0.1, 0,
+    innerWidth * dpr * 0.5, innerHeight * dpr * 0.6,
+    Math.max(innerWidth, innerHeight) * dpr
+  );
+  g.addColorStop(0, "rgba(0,240,255,0.02)");
+  g.addColorStop(1, "rgba(0,0,0,0)");
+  bgCtx.fillStyle = g;
+  bgCtx.fillRect(0,0,bg.width,bg.height);
+
+  particles.forEach(p => {
+    p.x += p.vx * (1 + bgAmp * 6);
+    p.y += p.vy * (1 + bgAmp * 6);
+
+    if (p.x < -50) p.x = innerWidth + 50;
+    if (p.x > innerWidth + 50) p.x = -50;
+    if (p.y < -50) p.y = innerHeight + 50;
+    if (p.y > innerHeight + 50) p.y = -50;
+
+    const size = (p.r + 1 + bgAmp * 8) * dpr;
+
     bgCtx.beginPath();
-    bgCtx.fillStyle = `hsla(${p.hue}, 85%, 60%, ${0.06 + bgAmplitude*0.3})`;
-    bgCtx.arc(p.x*dpr, p.y*dpr, size, 0, Math.PI*2);
+    bgCtx.fillStyle = `hsla(${p.hue},80%,60%,${0.05 + bgAmp * 0.3})`;
+    bgCtx.arc(p.x * dpr, p.y * dpr, size, 0, Math.PI * 2);
     bgCtx.fill();
+
+    p.hue += 0.2 + bgAmp * 2;
   });
+
   requestAnimationFrame(drawBG);
 }
 drawBG();
 
 /* ===========================
-   Audio & Analyser setup
-   =========================== */
-let audioCtx=null, analyser=null, freqAnalyser=null, sourceNode=null;
+   AUDIO SETUP
+=========================== */
+let audioCtx=null, analyser=null, freqAnalyser=null;
 let dataArrayTime=null, dataArrayFreq=null;
-let measuring=false, rafId=null;
-let readings=[]; // numeric dB readings
+let measuring=false;
+let readings=[];
+
+const startBtn = document.getElementById("startBtn");
+const saveLocalBtn = document.getElementById("saveLocalBtn");
+const exportBtn = document.getElementById("exportBtn");
+const uploadFirebaseBtn = document.getElementById("uploadFirebaseBtn");
+
+const thresholdRange = document.getElementById("thresholdRange");
+const thVal = document.getElementById("thVal");
+const statusEl = document.getElementById("status");
+
+const dbBig = document.getElementById("dbBig");
+const dbText = document.getElementById("dbText");
+const needle = document.getElementById("needle");
+
+const maxValEl = document.getElementById("maxVal");
+const minValEl = document.getElementById("minVal");
+const avgValEl = document.getElementById("avgVal");
+const countValEl = document.getElementById("countVal");
+const fftBinsEl = document.getElementById("fftBins");
+
 let threshold = 60;
-const SAMPLE_CHUNK = 2048;
-
-const startBtn = document.getElementById('startBtn');
-const saveLocalBtn = document.getElementById('saveLocalBtn');
-const exportBtn = document.getElementById('exportBtn');
-const uploadFirebaseBtn = document.getElementById('uploadFirebaseBtn');
-const thresholdRange = document.getElementById('thresholdRange');
-const thValEl = document.getElementById('thVal');
-const statusEl = document.getElementById('status');
-const dbBig = document.getElementById('dbBig');
-const dbText = document.getElementById('dbText');
-const needle = document.getElementById('needle');
-const maxValEl = document.getElementById('maxVal');
-const minValEl = document.getElementById('minVal');
-const avgValEl = document.getElementById('avgVal');
-const countValEl = document.getElementById('countVal');
-const fftBinsEl = document.getElementById('fftBins');
-
-thresholdRange.addEventListener('input', ()=> {
+thresholdRange.oninput = () => {
   threshold = Number(thresholdRange.value);
-  thValEl.innerText = threshold + ' dB';
-});
-thValEl.innerText = threshold + ' dB';
+  thVal.innerText = threshold + " dB";
+};
 
 /* ===========================
-   Chart: Live dB (with zoom/pan)
-   =========================== */
-const liveCtx = document.getElementById('liveChart').getContext('2d');
+   CHART.JS LIVE GRAPH
+=========================== */
+const liveCtx = document.getElementById("liveChart").getContext("2d");
 const liveChart = new Chart(liveCtx, {
   type:'line',
-  data:{ labels:[], datasets:[{ label:'dB', data:[], borderColor:'rgba(11,243,222,0.95)', backgroundColor:'rgba(11,243,222,0.06)', tension:0.25, pointRadius:0, fill:true }]},
+  data:{
+    labels:[],
+    datasets:[
+      {
+        data:[],
+        borderColor:"#00f0ff",
+        backgroundColor:"rgba(0,240,255,0.1)",
+        borderWidth:2,
+        tension:0.3,
+        pointRadius:0,
+        fill:true
+      }
+    ]
+  },
   options:{
-    animation:false, responsive:true, maintainAspectRatio:false,
-    scales:{ x:{ display:false }, y:{ min:0, max:120 } },
+    animation:false,
+    responsive:true,
+    maintainAspectRatio:false,
+    scales:{
+      x:{ display:false },
+      y:{ min:0, max:120 }
+    },
     plugins:{
       legend:{ display:false },
       zoom:{
-        pan:{ enabled:true, mode:'x', modifierKey:'ctrl' },
-        zoom:{ wheel:{ enabled:true }, pinch:{ enabled:true }, mode:'x' }
+        pan:{ enabled:true, mode:"x" },
+        zoom:{ wheel:{enabled:true}, pinch:{enabled:true}, mode:"x" }
       }
     }
   }
 });
-const graphModeBtn = document.getElementById('graphModeBtn');
-const zoomReset = document.getElementById('zoomReset');
-let graphMode = 'fixed'; // fixed | auto | compact
+
+const graphModeBtn = document.getElementById("graphModeBtn");
+const zoomReset = document.getElementById("zoomReset");
+
+let graphMode = "fixed"; // fixed | auto | compact
+
 function applyGraphMode(){
-  if(graphMode==='fixed'){ liveChart.options.scales.y.min = 0; liveChart.options.scales.y.max = 120; graphModeBtn.innerText='Mode: Fixed'; }
-  else if(graphMode==='auto'){ const recent = readings.slice(-120); const maxVal = Math.max(...recent, 20); const minVal = Math.min(...recent, 0); liveChart.options.scales.y.min = Math.max(0, minVal-8); liveChart.options.scales.y.max = Math.min(140, maxVal+8); graphModeBtn.innerText='Mode: Auto'; }
-  else if(graphMode==='compact'){ liveChart.options.scales.y.min = 0; liveChart.options.scales.y.max = 80; graphModeBtn.innerText='Mode: Compact'; }
+  if(graphMode === "fixed"){
+    liveChart.options.scales.y.min = 0;
+    liveChart.options.scales.y.max = 120;
+    graphModeBtn.innerText = "Mode: Fixed";
+  }
+  else if(graphMode === "auto"){
+    const recent = readings.slice(-120);
+    const maxV = Math.max(...recent, 20);
+    const minV = Math.min(...recent, 0);
+
+    liveChart.options.scales.y.min = Math.max(0, minV - 8);
+    liveChart.options.scales.y.max = Math.min(140, maxV + 8);
+    graphModeBtn.innerText = "Mode: Auto";
+  }
+  else {
+    liveChart.options.scales.y.min = 0;
+    liveChart.options.scales.y.max = 80;
+    graphModeBtn.innerText = "Mode: Compact";
+  }
   liveChart.update('none');
 }
-graphModeBtn.addEventListener('click', ()=>{ graphMode = graphMode==='fixed'?'auto': graphMode==='auto'?'compact':'fixed'; applyGraphMode(); });
-zoomReset.addEventListener('click', ()=>{ if (liveChart.resetZoom) liveChart.resetZoom(); });
+
+graphModeBtn.onclick = () => {
+  graphMode = graphMode === "fixed" ? "auto" :
+              graphMode === "auto" ? "compact" : "fixed";
+  applyGraphMode();
+};
+
+zoomReset.onclick = () => {
+  if (liveChart.resetZoom) liveChart.resetZoom();
+};
 
 /* ===========================
-   FFT Canvas
-   =========================== */
-const fftCanvas = document.getElementById('fftCanvas');
-const fftCtx = fftCanvas.getContext('2d');
-function resizeFFT(){ fftCanvas.width = fftCanvas.clientWidth * dpr; fftCanvas.height = fftCanvas.clientHeight * dpr; }
-resizeFFT(); window.addEventListener('resize', resizeFFT);
-
-/* ===========================
-   FFT drawing routine
-   =========================== */
-function drawFFT(){
-  if (!dataArrayFreq) { requestAnimationFrame(drawFFT); return; }
-  fftCtx.clearRect(0,0,fftCanvas.width,fftCanvas.height);
-  const w = fftCanvas.width, h = fftCanvas.height;
-  const binCount = dataArrayFreq.length;
-  const barWidth = w / binCount;
-  fftCtx.fillStyle = 'rgba(255,255,255,0.04)';
-  for(let i=0;i<binCount;i++){
-    const v = dataArrayFreq[i] / 255; // 0..1
-    const barH = v * h;
-    // color gradient
-    const hue = Math.round((i/binCount)*260);
-    fftCtx.fillStyle = `hsl(${hue}, 80%, ${30 + v*40}%)`;
-    fftCtx.fillRect(i*barWidth, h-barH, Math.max(1,barWidth-1), barH);
-  }
-  fftBinsEl.innerText = binCount;
-  requestAnimationFrame(drawFFT);
+   FFT CANVAS
+=========================== */
+const fftCanvas = document.getElementById("fftCanvas");
+const fftCtx = fftCanvas.getContext("2d");
+function resizeFFT(){
+  fftCanvas.width = fftCanvas.clientWidth * dpr;
+  fftCanvas.height = fftCanvas.clientHeight * dpr;
 }
-drawFFT();
+resizeFFT();
+window.addEventListener("resize", resizeFFT);
 
 /* ===========================
-   Main measurement loop
-   =========================== */
+   START MONITORING
+=========================== */
+startBtn.onclick = () => {
+  if(!measuring) startMonitoring();
+  else stopMonitoring();
+};
+
 async function startMonitoring(){
-  if (measuring) return;
   try{
     const stream = await navigator.mediaDevices.getUserMedia({ audio:true });
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    analyser = audioCtx.createAnalyser(); // for time-domain RMS
-    freqAnalyser = audioCtx.createAnalyser(); // for frequency domain
-    analyser.fftSize = SAMPLE_CHUNK;
-    freqAnalyser.fftSize = 1024; // smaller for smoother FFT
+
+    audioCtx = new AudioContext();
+
+    analyser = audioCtx.createAnalyser();
+    freqAnalyser = audioCtx.createAnalyser();
+
+    analyser.fftSize = 2048;
+    freqAnalyser.fftSize = 1024;
+
     dataArrayTime = new Float32Array(analyser.fftSize);
     dataArrayFreq = new Uint8Array(freqAnalyser.frequencyBinCount);
 
-    sourceNode = audioCtx.createMediaStreamSource(stream);
-    // split to two analysers
-    const splitter = audioCtx.createChannelSplitter(1);
-    sourceNode.connect(splitter);
-    splitter.connect(analyser, 0);
-    splitter.connect(freqAnalyser, 0);
+    const src = audioCtx.createMediaStreamSource(stream);
+    src.connect(analyser);
+    src.connect(freqAnalyser);
 
     measuring = true;
-    startBtn.innerText = 'Stop';
-    statusEl.innerText = 'Monitoring';
+    startBtn.innerText = "Stop";
+    statusEl.innerText = "Monitoring";
 
-    measureLoop();
-    drawFFT();
-  } catch(e){
-    alert('Allow microphone access and reload the page.');
-    console.error(e);
+    loop();
+    fftLoop();
+
+  } catch(err){
+    alert("Please allow microphone access.");
   }
 }
 
 function stopMonitoring(){
   measuring = false;
-  startBtn.innerText = 'Start';
-  statusEl.innerText = 'Stopped';
-  if (rafId) cancelAnimationFrame(rafId);
-  try{ if (audioCtx) audioCtx.suspend(); }catch(e){}
+  startBtn.innerText = "Start";
+  statusEl.innerText = "Stopped";
+
+  try{ audioCtx.close(); }catch(e){}
 }
-
-startBtn.addEventListener('click', ()=> { if(!measuring) startMonitoring(); else stopMonitoring(); });
-
-function measureLoop(){
+/* ===========================
+   MAIN AUDIO LOOP
+=========================== */
+function loop(){
   if(!measuring) return;
-  // time domain RMS
+
   analyser.getFloatTimeDomainData(dataArrayTime);
+
   let sum = 0;
-  for(let i=0;i<dataArrayTime.length;i++) sum += dataArrayTime[i]*dataArrayTime[i];
+  for(let i=0;i<dataArrayTime.length;i++){
+    sum += dataArrayTime[i] * dataArrayTime[i];
+  }
+
   let rms = Math.sqrt(sum / dataArrayTime.length);
-  let dB = 20 * Math.log10(Math.max(rms, 1e-8)); // negative dBFS
-  let dbPos = Math.round((dB + 100) * 1.15); // map to positive approximate
+  let dB = 20 * Math.log10(Math.max(rms, 1e-8));
+  let dbPos = Math.round((dB + 100) * 1.2);
   dbPos = Math.max(0, Math.min(140, dbPos));
 
-  // frequency domain
-  freqAnalyser.getByteFrequencyData(dataArrayFreq);
+  updateUI(dbPos);
 
-  // update bg amplitude (0..1)
-  bgAmplitude = Math.min(1, rms * 80);
-
-  // update UI
-  handleReading(dbPos);
-
-  // FFT array for drawing
-  dataArrayFreq = dataArrayFreq;
-
-  rafId = requestAnimationFrame(measureLoop);
+  requestAnimationFrame(loop);
 }
 
 /* ===========================
-   UI update & chart push
-   =========================== */
-function handleReading(db){
-  // readings store
+   UPDATE UI + CHART + GAUGE
+=========================== */
+function updateUI(db){
   readings.push(db);
-  if(readings.length>2000) readings.shift();
+  if (readings.length > 3000) readings.shift();
 
-  // gauge + needle
-  dbBig.innerText = db + ' dB';
-  dbText.innerText = db + ' dB';
-  const angle = ((Math.max(0,Math.min(120,db)) / 120) * 180) - 90;
-  needle.setAttribute('transform', `translate(120,100) rotate(${angle})`);
+  dbBig.innerText = db + " dB";
+  dbText.innerText = db + " dB";
 
-  // summary numbers
-  const max = Math.max(...readings);
-  const min = Math.min(...readings);
-  const avg = Math.round(readings.reduce((a,b)=>a+b,0)/readings.length);
-  maxValEl.innerText = max;
-  minValEl.innerText = min;
-  avgValEl.innerText = avg;
-  countValEl.innerText = readings.length;
+  const angle = (Math.min(120, db) / 120) * 180 - 90;
+  needle.setAttribute("transform", `translate(120,100) rotate(${angle})`);
 
-  // push to chart (stable chart Y-range maintained by applyGraphMode)
-  liveChart.data.labels.push('');
+  // Chart update
+  liveChart.data.labels.push("");
   liveChart.data.datasets[0].data.push(db);
   if (liveChart.data.labels.length > 300){
     liveChart.data.labels.shift();
@@ -437,229 +520,223 @@ function handleReading(db){
   }
   applyGraphMode();
 
-  // alert logic & color feedback
-  if (db >= threshold){
-    statusEl.innerText = `ALERT: ${db} dB`;
-    statusEl.style.color = 'var(--danger)';
-    // quick header flash
-    document.querySelector('header')?.animate([{ boxShadow: '0 8px 30px rgba(255,77,109,0.08)' }, { boxShadow: '' }], { duration: 600 });
-    if (navigator.vibrate) navigator.vibrate(120);
+  // Stats
+  const max = Math.max(...readings);
+  const min = Math.min(...readings);
+  const avg = Math.round(readings.reduce((a,b)=>a+b,0) / readings.length);
+
+  maxValEl.innerText = max;
+  minValEl.innerText = min;
+  avgValEl.innerText = avg;
+  countValEl.innerText = readings.length;
+
+  // Background reacts to sound
+  bgAmp = Math.min(1, rmsToAmp(db));
+
+  // Alert color
+  if(db >= threshold){
+    statusEl.innerText = "ALERT";
+    statusEl.style.color = "var(--danger)";
+    if (navigator.vibrate) navigator.vibrate(100);
   } else {
-    statusEl.innerText = 'Monitoring';
-    statusEl.style.color = '';
+    statusEl.innerText = "Monitoring";
+    statusEl.style.color = "";
   }
 }
 
+function rmsToAmp(db){
+  return Math.min(1, Math.max(0, (db - 30) / 90));
+}
+
 /* ===========================
-   Save & history (local) + export
-   =========================== */
+   FFT LOOP
+=========================== */
+function fftLoop(){
+  if(!measuring){
+    requestAnimationFrame(fftLoop);
+    return;
+  }
+
+  freqAnalyser.getByteFrequencyData(dataArrayFreq);
+  drawFFT();
+  requestAnimationFrame(fftLoop);
+}
+
+function drawFFT(){
+  fftCtx.clearRect(0,0,fftCanvas.width, fftCanvas.height);
+  const w = fftCanvas.width;
+  const h = fftCanvas.height;
+  const count = dataArrayFreq.length;
+
+  const barWidth = w / count;
+
+  for(let i = 0; i < count; i++){
+    const v = dataArrayFreq[i] / 255;
+    const barH = v * h;
+
+    const hue = Math.round((i / count) * 260);
+
+    fftCtx.fillStyle = `hsl(${hue},80%,${30 + v*40}%)`;
+    fftCtx.fillRect(i * barWidth, h - barH, barWidth - 1, barH);
+  }
+
+  fftBinsEl.innerText = count;
+}
+
+/* ===========================
+   SAVE SESSION  (FIXED VERSION)
+=========================== */
 function saveSessionLocal(){
   if (!readings.length) return null;
-  const key = new Date().toISOString().slice(0,10);
-  const store = JSON.parse(localStorage.getItem('sm_history') || '{}');
-  store[key] = store[key] || [];
-  // push last 1000 values with timestamps approx spaced
+
+  // UNIQUE timestamp key
+  const now = new Date();
+  const key = now.toISOString().replace(/[:.]/g, "-");  
+
+  const store = JSON.parse(localStorage.getItem("sm_history") || "{}");
+
   const base = Date.now();
-  const list = readings.slice(-1000).map((v,i)=>({ t: base - (readings.length - i)*200, db: v }));
-  store[key] = store[key].concat(list);
-  localStorage.setItem('sm_history', JSON.stringify(store));
+  const list = readings.map((v,i)=>({
+    t: base - (readings.length - i) * 200,
+    db: v
+  }));
+
+  // Save under unique session ID
+  store[key] = list;
+
+  localStorage.setItem("sm_history", JSON.stringify(store));
   renderHistory();
   return key;
 }
-saveLocalBtn.addEventListener('click', ()=> {
-  const k = saveSessionLocal();
-  if (k) alert('Saved session for ' + k);
-  else alert('No data yet');
-});
 
+saveLocalBtn.onclick = () => {
+  const k = saveSessionLocal();
+  if(k) alert("Session saved:\n" + k);
+};
+
+/* ===========================
+   HISTORY RENDER + ACTIONS
+=========================== */
 function renderHistory(){
-  const store = JSON.parse(localStorage.getItem('sm_history') || '{}');
-  const days = Object.keys(store).sort((a,b)=>b.localeCompare(a));
-  const container = document.getElementById('historyList');
-  container.innerHTML = '';
-  if (!days.length) { container.innerHTML = '<div class="small">No saved days yet.</div>'; return; }
-  days.forEach(day=>{
-    const arr = store[day];
+  const store = JSON.parse(localStorage.getItem("sm_history") || "{}");
+  const keys = Object.keys(store).sort().reverse();
+
+  const container = document.getElementById("historyList");
+  container.innerHTML = "";
+
+  if(!keys.length){
+    container.innerHTML = "<div class='small'>No saved sessions.</div>";
+    return;
+  }
+
+  keys.forEach(key=>{
+    const arr = store[key];
     const avg = Math.round(arr.reduce((a,b)=>a+b.db,0)/arr.length);
-    const item = document.createElement('div');
-    item.className = 'history-item';
-    item.style.display='flex';
-    item.style.justifyContent='space-between';
-    item.style.alignItems='center';
-    item.style.padding='8px';
-    item.style.border='1px solid var(--glass)';
-    item.style.borderRadius='8px';
-    item.innerHTML = `<div><strong>${day}</strong><div class="small">Samples: ${arr.length} • Avg: ${avg} dB</div></div>
-      <div style="display:flex;gap:8px">
-        <button class="btn ghost" data-day="${day}" data-action="view">View</button>
-        <button class="btn ghost" data-day="${day}" data-action="pdf">PDF</button>
-        <button class="btn ghost" data-day="${day}" data-action="delete">Delete</button>
-      </div>`;
-    container.appendChild(item);
+
+    const box = document.createElement("div");
+    box.style.padding="10px";
+    box.style.border="1px solid var(--glass)";
+    box.style.borderRadius="8px";
+    box.style.display="flex";
+    box.style.justifyContent="space-between";
+    box.style.alignItems="center";
+
+    box.innerHTML = `
+      <div>
+        <strong>${key}</strong>
+        <div class="small">Avg: ${avg} dB • Samples: ${arr.length}</div>
+      </div>
+      <div style="display:flex;gap:6px">
+        <button class="btn ghost" data-k="${key}" data-a="view">View</button>
+        <button class="btn ghost" data-k="${key}" data-a="pdf">PDF</button>
+        <button class="btn ghost" data-k="${key}" data-a="del">Delete</button>
+      </div>
+    `;
+
+    container.appendChild(box);
   });
-  container.querySelectorAll('button').forEach(b=>{
-    b.addEventListener('click', (e)=>{
-      const action = b.dataset.action, day = b.dataset.day;
-      const store = JSON.parse(localStorage.getItem('sm_history') || '{}');
-      if (action==='view'){
-        const arr = store[day].map(x=>x.db);
-        liveChart.data.labels = arr.map(_=>'');
+
+  container.querySelectorAll("button").forEach(btn=>{
+    btn.onclick = ()=>{
+      const key = btn.dataset.k;
+      const action = btn.dataset.a;
+      const store = JSON.parse(localStorage.getItem("sm_history") || "{}");
+
+      if(action === "view"){
+        const arr = store[key].map(x=>x.db);
+        liveChart.data.labels = arr.map(_=>"");
         liveChart.data.datasets[0].data = arr;
         liveChart.update();
-      } else if(action==='pdf'){
-        const arr = store[day].map(x=>x.db);
-        exportPDFForReadings(arr, day);
-      } else if(action==='delete'){
-        if(confirm('Delete '+day+' ?')){ delete store[day]; localStorage.setItem('sm_history', JSON.stringify(store)); renderHistory(); }
       }
-    });
+      else if(action === "pdf"){
+        exportPDF(store[key], key);
+      }
+      else if(action === "del"){
+        if(confirm("Delete session?\n" + key)){
+          delete store[key];
+          localStorage.setItem("sm_history", JSON.stringify(store));
+          renderHistory();
+        }
+      }
+    };
   });
 }
 renderHistory();
 
-document.getElementById('clearHistory').addEventListener('click', ()=>{
-  if(confirm('Clear all saved history?')){ localStorage.removeItem('sm_history'); renderHistory(); }
-});
-
-// export pdf
-exportBtn.addEventListener('click', ()=> exportPDFForReadings(readings, 'live'));
-function exportPDFForReadings(arr, dateKey){
-  if (!arr || !arr.length){ alert('No data'); return; }
-  const max = Math.max(...arr), min=Math.min(...arr), avg=Math.round(arr.reduce((a,b)=>a+b,0)/arr.length);
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({unit:'mm',format:'a4'});
-  doc.setFontSize(16); doc.setTextColor(10,200,220); doc.text('Sound Report',14,18);
-  doc.setFontSize(11); doc.setTextColor(160,160,160); doc.text('Date: '+dateKey,14,28);
-  doc.setFontSize(12); doc.setTextColor(255,255,255);
-  doc.text(`Max: ${max} dB`,14,42); doc.text(`Min: ${min} dB`,14,50); doc.text(`Avg: ${avg} dB`,14,58); doc.text(`Samples: ${arr.length}`,14,66);
-  try{
-    const img = document.getElementById('liveChart').toDataURL('image/png',1.0);
-    doc.addImage(img,'PNG',14,76,180,60);
-  }catch(e){ console.warn('chart export failed', e); }
-  doc.save('sound_report_'+dateKey+'.pdf');
-}
-
-/* ===========================
-   FFT draw should use dataArrayFreq
-   =========================== */
-function updateFFTArray(){
-  if (!freqAnalyser) return;
-  const arr = new Uint8Array(freqAnalyser.frequencyBinCount);
-  freqAnalyser.getByteFrequencyData(arr);
-  dataArrayFreq = arr;
-}
-function fftLoop(){
-  if(!measuring){ requestAnimationFrame(fftLoop); return; }
-  updateFFTArray();
-  // draw handled in drawFFT() which uses dataArrayFreq
-  requestAnimationFrame(fftLoop);
-}
-fftLoop();
-
-/* ===========================
-   Firebase optional upload (outline)
-   =========================== */
-// To enable Firebase:
-// 1) Uncomment Firebase <script> tags at the top of this file.
-// 2) Paste your firebaseConfig object into firebaseConfig variable below.
-// 3) Uncomment firebase.initializeApp(firebaseConfig); and related code.
-// 4) Call enableFirebase() to start using cloud saves.
-
-let firebaseEnabled = false;
-let firebaseEnv = null;
-// Example place to add firebaseConfig:
-const firebaseConfig = {
-  /* paste your Firebase config here:
-  apiKey: "...",
-  authDomain: "...",
-  databaseURL: "https://<your-db>.firebaseio.com",
-  projectId: "...",
-  storageBucket: "...",
-  messagingSenderId: "...",
-  appId: "..."
-  */
+document.getElementById("clearHistory").onclick = ()=>{
+  if(confirm("Clear ALL history?")){
+    localStorage.removeItem("sm_history");
+    renderHistory();
+  }
 };
 
-// function enableFirebase(){
-//   if(typeof firebase === 'undefined'){ alert('Firebase SDK is not loaded. Uncomment imports in the HTML and add your config.'); return; }
-//   firebase.initializeApp(firebaseConfig);
-//   firebaseEnv = firebase.database();
-//   firebaseEnabled = true;
-//   alert('Firebase enabled (ready to upload).');
-// }
-
-uploadFirebaseBtn.addEventListener('click', async ()=>{
-  if(!firebaseEnabled){ alert('Firebase not enabled. See code comments to enable.'); return; }
-  // example payload
-  const key = new Date().toISOString().slice(0,10);
-  const payload = readings.map((v,i)=>({ t: Date.now() - (readings.length - i)*250, db: v }));
-  try{
-    // firebaseEnv.ref('sound_data/'+key).push(payload);
-    alert('Uploaded to Firebase (example code commented)');
-  }catch(e){ console.error(e); alert('Upload failed'); }
-});
-
 /* ===========================
-   Graph mode & apply
-   =========================== */
-function applyGraphMode(){
-  if(graphMode==='fixed'){ liveChart.options.scales.y.min = 0; liveChart.options.scales.y.max = 120; graphModeBtn.innerText = 'Mode: Fixed'; }
-  else if(graphMode==='auto'){ const recent = readings.slice(-120); const maxVal = Math.max(...recent, 20); const minVal = Math.min(...recent, 0); liveChart.options.scales.y.min = Math.max(0, minVal-8); liveChart.options.scales.y.max = Math.min(140, maxVal+8); graphModeBtn.innerText='Mode: Auto'; }
-  else if(graphMode==='compact'){ liveChart.options.scales.y.min = 0; liveChart.options.scales.y.max = 80; graphModeBtn.innerText='Mode: Compact'; }
-  liveChart.update('none');
-}
-graphModeBtn.addEventListener('click', ()=> { graphMode = graphMode==='fixed'?'auto': graphMode==='auto'?'compact':'fixed'; applyGraphMode(); });
-// initial
-applyGraphMode();
-
-/* ===========================
-   small startup UX
-   =========================== */
-document.addEventListener('visibilitychange', ()=>{
-  if(document.visibilityState==='visible' && measuring && audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-});
-
-// Prevent mic locked on unload
-window.addEventListener('beforeunload', ()=> { try{ if (audioCtx) audioCtx.close(); }catch(e){} });
-
-/* ===========================
-   Start background FFT draw + BG amplitude smoothing
-   =========================== */
-let smoothAmp = 0;
-function bgAmpLoop(){
-  // smooth
-  smoothAmp += (bgAmplitude - smoothAmp) * 0.08;
-  bgAmplitude = smoothAmp;
-  requestAnimationFrame(bgAmpLoop);
-}
-bgAmpLoop();
-
-// use drawFFT() to paint using dataArrayFreq (update already started earlier)
-(function fftPainter(){
-  if (dataArrayFreq && dataArrayFreq.length){
-    // draw happens in drawFFT() which references dataArrayFreq currently
+   EXPORT PDF
+=========================== */
+function exportPDF(arr, title){
+  if(!arr || !arr.length){
+    alert("No data to export");
+    return;
   }
-  requestAnimationFrame(fftPainter);
-})();
 
-// ensure drawFFT reads the current dataArrayFreq variable
-// (the drawFFT function is already scheduled at init)
+  const max = Math.max(...arr.map(x=>x.db));
+  const min = Math.min(...arr.map(x=>x.db));
+  const avg = Math.round(arr.reduce((a,b)=>a+b.db,0)/arr.length);
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit:"mm", format:"a4" });
+
+  doc.setFontSize(16);
+  doc.setTextColor(0,220,255);
+  doc.text("Sound Monitoring Report", 14, 16);
+
+  doc.setFontSize(12);
+  doc.setTextColor(255,255,255);
+  doc.text("Session: " + title, 14, 26);
+  doc.text("Max: " + max + " dB", 14, 36);
+  doc.text("Min: " + min + " dB", 14, 44);
+  doc.text("Avg: " + avg + " dB", 14, 52);
+
+  try{
+    const img = document.getElementById("liveChart").toDataURL("image/png", 1.0);
+    doc.addImage(img, "PNG", 14, 64, 180, 60);
+  }catch(e){}
+
+  doc.save("sound_report_" + title + ".pdf");
+}
+
+exportBtn.onclick = ()=> exportPDF(readings.map(db=>({db})), "live");
 
 /* ===========================
-   Kick off background painter that also uses amplitude to adjust particles
-   =========================== */
-(function bgTicker(){
-  // slightly tweak particle properties based on amplitude
-  particles.forEach(p=>{
-    p.vx += (Math.random()-0.5)*0.02 * (1 + bgAmplitude*6);
-    p.vy += (Math.random()-0.5)*0.02 * (1 + bgAmplitude*6);
-    p.hue += 0.1 + bgAmplitude*2;
-  });
-  drawBG();
-  requestAnimationFrame(bgTicker);
-})();
+   OPTIONAL FIREBASE (DISABLED)
+=========================== */
+
+uploadFirebaseBtn.onclick = ()=>{
+  alert("Firebase upload disabled. Add config to enable.");
+};
 
 </script>
+
 </body>
 </html>
 
