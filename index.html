@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Sound Monitor — Pro Dashboard</title>
+  <title>Neon Sound Dashboard</title>
 
   <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -12,677 +12,218 @@
 
   <style>
     :root{
-      --bg-dark: #07080c;
-      --card-dark: rgba(255,255,255,0.03);
-      --text-light: #e9f7fb;
-      --muted-light: rgba(255,255,255,0.55);
-      --accent: #00f0ff;
-      --accent2: #8a4cff;
+      --bg: #05060a;
+      --card: rgba(255,255,255,0.03);
+      --neon: #00f0ff;
       --danger: #ff4d6d;
-      --radius: 12px;
-      --glass: rgba(255,255,255,0.03);
+      --muted: rgba(255,255,255,0.5);
+      --glass-border: rgba(255,255,255,0.06);
+      --radius: 14px;
     }
-    /* Light theme variables (switched in JS) */
-    body[data-theme="light"]{
-      --bg-dark: #f6f8fb;
-      --card-dark: #ffffff;
-      --text-light: #0b1220;
-      --muted-light: rgba(11,18,32,0.6);
-      --accent: #0b93ff;
-      --accent2: #6b3ec3;
-      --danger: #d6455b;
-      --glass: rgba(11,18,32,0.04);
-    }
-
-    *{box-sizing:border-box}
     body{
       margin:0;
-      font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-      background: linear-gradient(180deg, rgba(0,0,0,0.35), transparent), var(--bg-dark);
-      color: var(--text-light);
-      -webkit-font-smoothing:antialiased;
-      -moz-osx-font-smoothing:grayscale;
+      min-height:100vh;
+      background:#05060a;
+      color:#e9f7fb;
+      font-family: Inter, system-ui;
+      padding:20px;
     }
-
-    /* Splash */
-    #splash{
-      position:fixed;inset:0;display:grid;place-items:center;background:var(--bg-dark);z-index:9999;
-      transition:opacity .6s ease;will-change:opacity;
+    .card{
+      background:var(--card);
+      border-radius:var(--radius);
+      padding:16px;
+      border:1px solid var(--glass-border);
+      box-shadow:0 6px 30px rgba(0,0,0,0.5);
+      margin-bottom:20px;
     }
-    #splash.hide{opacity:0;pointer-events:none}
-
-    .splash-card{
-      text-align:center;padding:30px;border-radius:16px;background:linear-gradient(135deg,rgba(255,255,255,0.02), rgba(255,255,255,0.01));
-      border:1px solid var(--glass);
+    .gauge-ring{
+      width:160px;height:160px;border-radius:50%;
+      background:conic-gradient(var(--neon) 0deg, rgba(255,255,255,0.06) 0deg);
+      display:grid;place-items:center;
     }
-    .splash-title{font-size:20px;color:var(--accent);margin:0 0 8px 0}
-    .splash-sub{color:var(--muted-light);margin:0 0 14px 0}
-
-    /* layout */
-    header{
-      display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--glass);
-      position:sticky;top:0;background:linear-gradient(180deg,rgba(0,0,0,0.04),transparent);
-      backdrop-filter: blur(6px);z-index:10;
+    .gauge-center{
+      width:120px;height:120px;border-radius:50%;
+      background:rgba(255,255,255,0.03);
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
     }
-    .brand{display:flex;gap:10px;align-items:center}
-    .logo{
-      width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,var(--accent), var(--accent2));display:grid;place-items:center;color:#000;font-weight:700;
-      box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+    .dbVal{font-size:32px;font-weight:800;color:var(--neon)}
+    button{
+      padding:10px 18px;
+      border-radius:10px;
+      border:none;
+      background:var(--neon);
+      color:#000;font-weight:700;
+      cursor:pointer;
     }
-    .brand h1{font-size:18px;margin:0}
-    nav{display:flex;gap:12px;align-items:center}
-    .nav-btn{padding:8px 10px;border-radius:10px;background:transparent;border:1px solid transparent;color:var(--muted-light);cursor:pointer}
-    .nav-btn.active{border-color:var(--glass);color:var(--accent);font-weight:600}
-
-    main{padding:18px;display:grid;grid-template-columns:1fr;gap:14px}
-    @media(min-width:920px){
-      main{grid-template-columns: 360px 1fr}
-    }
-
-    .card{background:var(--card-dark);border-radius:var(--radius);padding:14px;border:1px solid var(--glass);box-shadow:0 8px 24px rgba(0,0,0,0.35)}
-    .small{font-size:13px;color:var(--muted-light)}
-    .row{display:flex;gap:12px;align-items:center;justify-content:space-between}
-    .btn{padding:8px 12px;border-radius:10px;background:linear-gradient(90deg, rgba(0,240,255,0.12), rgba(138,76,255,0.08));border:1px solid rgba(255,255,255,0.04);color:var(--accent);font-weight:600;cursor:pointer}
-    .btn.ghost{background:transparent;border:1px dashed var(--glass);color:var(--muted-light)}
-    .muted{color:var(--muted-light)}
-
-    /* gauge */
-    .gauge-wrap{display:flex;gap:12px;align-items:center;flex-direction:column}
-    .gauge-svg{width:240px;height:120px}
-    .gauge-center{display:flex;flex-direction:column;align-items:center;gap:6px}
-    .db-big{font-size:28px;font-weight:800;color:var(--accent)}
-    .db-label{font-size:13px;color:var(--muted-light)}
-
-    /* chart */
-    .chart-box{height:300px}
-
-    /* history list */
-    .history-list{display:flex;flex-direction:column;gap:8px}
-    .history-item{display:flex;justify-content:space-between;align-items:center;padding:10px;border-radius:10px;border:1px solid var(--glass);background:linear-gradient(180deg, rgba(255,255,255,0.01), transparent)}
-    .history-item strong{color:var(--accent)}
-
-    /* settings */
-    .setting-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px dashed var(--glass);}
-
-    footer{padding:18px;text-align:center;color:var(--muted-light)}
-
-    /* mobile tweaks */
-    @media(max-width:600px){
-      .logo{width:36px;height:36px}
-      .db-big{font-size:22px}
-      .gauge-svg{width:180px;height:90px}
+    #alertBox{
+      background:rgba(255,77,109,0.2);
+      padding:12px;
+      margin-top:8px;
+      border-radius:10px;
+      border:1px solid rgba(255,77,109,0.4);
+      display:none;
+      font-weight:bold;
+      color:var(--danger);
     }
   </style>
 </head>
-<body data-theme="dark">
+<body>
 
-  <!-- Splash -->
-  <div id="splash">
-    <div class="splash-card">
-      <div class="splash-title">Neon Sound Monitor</div>
-      <div class="splash-sub">Real-time noise dashboard — phone ready</div>
-      <div style="display:flex;gap:8px;justify-content:center">
-        <button id="enterBtn" class="btn">Enter Dashboard</button>
-        <button id="skipBtn" class="btn ghost">Skip</button>
+<h2 style="color:var(--neon)">Neon Sound Dashboard</h2>
+<p class="muted">Live mic • Real-time dB • Stable graph • Alerts</p>
+
+<div class="card">
+  <button id="startBtn">Start Monitoring</button>
+
+  <div style="margin-top:20px;display:flex;justify-content:center;">
+    <div class="gauge-ring" id="gaugeRing">
+      <div class="gauge-center">
+        <div class="dbVal" id="dbVal">-- dB</div>
+        <div style="font-size:13px;color:var(--muted)">Current Level</div>
       </div>
     </div>
   </div>
 
-  <header>
-    <div class="brand">
-      <div class="logo">SM</div>
-      <div>
-        <h1>Sound Monitor</h1>
-        <div class="small muted">Live • History • Settings</div>
-      </div>
-    </div>
+  <div id="alertBox">THRESHOLD EXCEEDED</div>
 
-    <nav>
-      <button class="nav-btn active" data-route="live">Live</button>
-      <button class="nav-btn" data-route="history">History</button>
-      <button class="nav-btn" data-route="settings">Settings</button>
+  <div style="margin-top:20px;">
+    <label>Threshold: <span id="thVal">60</span>dB</label>
+    <input type="range" min="30" max="120" value="60" id="threshold">
+  </div>
 
-      <button id="themeToggle" class="nav-btn">Light</button>
-    </nav>
-  </header>
+</div>
 
-  <main>
-    <!-- Left: Live Card -->
-    <section class="card" id="liveCard">
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <div>
-          <div class="small muted">Real-time</div>
-          <div style="font-weight:800;font-size:18px">Live Monitor</div>
-        </div>
-        <div style="display:flex;gap:8px">
-          <button id="startBtn" class="btn">Start</button>
-          <button id="exportBtn" class="btn ghost">Export PDF</button>
-        </div>
-      </div>
+<div class="card">
+  <h3 style="color:var(--neon)">Live Graph</h3>
+  <canvas id="chartCanvas" height="200"></canvas>
+</div>
 
-      <div style="margin-top:12px" class="gauge-wrap">
-        <!-- SVG gauge with needle -->
-        <svg class="gauge-svg" viewBox="0 0 240 120" preserveAspectRatio="xMidYMid meet">
-          <defs>
-            <linearGradient id="g1" x1="0" x2="1">
-              <stop offset="0%" stop-color="#0bffde"/>
-              <stop offset="50%" stop-color="#8a4cff"/>
-              <stop offset="100%" stop-color="#ff4d6d"/>
-            </linearGradient>
-          </defs>
+<script>
 
-          <!-- colored arcs (green,yellow,red) -->
-          <path d="M20 100 A100 100 0 0 1 220 100" stroke="#0bffde" stroke-width="14" fill="none" stroke-linecap="round" opacity="0.45"/>
-          <path d="M40 100 A80 80 0 0 1 200 100" stroke="#8a4cff" stroke-width="14" fill="none" stroke-linecap="round" opacity="0.35"/>
-          <path d="M60 100 A60 60 0 0 1 180 100" stroke="#ff4d6d" stroke-width="14" fill="none" stroke-linecap="round" opacity="0.2"/>
+let audioCtx, analyser, dataArray;
+let measuring = false;
+let readings = [];
+let threshold = 60;
 
-          <!-- needle pivot -->
-          <g id="needle" transform="translate(120,100) rotate(-90)">
-            <line x1="0" y1="0" x2="0" y2="-72" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
-            <circle cx="0" cy="0" r="6" fill="#fff"/>
-          </g>
+// UI elements
+const startBtn = document.getElementById("startBtn");
+const dbVal = document.getElementById("dbVal");
+const thVal = document.getElementById("thVal");
+const thresholdSlider = document.getElementById("threshold");
+const gaugeRing = document.getElementById("gaugeRing");
+const alertBox = document.getElementById("alertBox");
 
-          <!-- center label -->
-          <text id="dbText" x="120" y="88" font-size="18" text-anchor="middle" fill="var(--accent)">-- dB</text>
-        </svg>
-
-        <div class="gauge-center">
-          <div class="db-big" id="dbBig">-- dB</div>
-          <div class="db-label small muted">Current Level</div>
-        </div>
-      </div>
-
-      <div style="margin-top:12px" class="row">
-        <div class="small muted">Threshold</div>
-        <div style="display:flex;gap:8px;align-items:center">
-          <input id="thresholdRange" type="range" min="30" max="120" value="60"/>
-          <div class="small"><strong id="thVal">60</strong> dB</div>
-        </div>
-      </div>
-
-      <div style="margin-top:12px" class="row">
-        <div class="small muted">Status</div>
-        <div class="small" id="status">Idle</div>
-      </div>
-
-      <div style="margin-top:12px" class="row">
-        <div>
-          <div class="small muted">Max</div>
-          <div id="maxVal" style="font-weight:700">--</div>
-        </div>
-        <div>
-          <div class="small muted">Min</div>
-          <div id="minVal" style="font-weight:700">--</div>
-        </div>
-        <div>
-          <div class="small muted">Avg</div>
-          <div id="avgVal" style="font-weight:700">--</div>
-        </div>
-      </div>
-
-    </section>
-
-    <!-- Right: Chart & Actions -->
-    <section class="card" id="chartCard">
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <div>
-          <div class="small muted">Analytics</div>
-          <div style="font-weight:800;font-size:18px">Live Graph</div>
-        </div>
-        <div class="small muted">Samples: <span id="countVal">0</span></div>
-      </div>
-
-      <div style="margin-top:12px" class="chart-box">
-        <canvas id="liveChart"></canvas>
-      </div>
-
-      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
-        <button id="saveSnapshot" class="btn ghost">Save Snapshot</button>
-        <button id="clearBtn" class="btn ghost">Clear</button>
-      </div>
-    </section>
-
-    <!-- History (hidden by default) -->
-    <section class="card" id="historyCard" style="display:none">
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <div>
-          <div class="small muted">History</div>
-          <div style="font-weight:800;font-size:18px">Saved Days</div>
-        </div>
-        <div class="small muted">You can download PDF for any day</div>
-      </div>
-
-      <div style="margin-top:12px" class="history-list" id="historyList">
-        <!-- Filled dynamically -->
-      </div>
-    </section>
-
-    <!-- Settings -->
-    <section class="card" id="settingsCard" style="display:none">
-      <div style="font-weight:800;font-size:16px">Settings</div>
-
-      <div class="setting-row">
-        <div>
-          <div class="small muted">Theme</div>
-          <div class="small">Switch between Light & Dark</div>
-        </div>
-        <div>
-          <button id="themeBtn" class="btn ghost">Toggle Theme</button>
-        </div>
-      </div>
-
-      <div class="setting-row">
-        <div>
-          <div class="small muted">Auto Threshold</div>
-          <div class="small">Let the app auto-adjust threshold to environment</div>
-        </div>
-        <div>
-          <label><input id="autoThreshold" type="checkbox"> Enable</label>
-        </div>
-      </div>
-
-      <div class="setting-row">
-        <div>
-          <div class="small muted">Vibration</div>
-          <div class="small">Vibrate phone when alert (if supported)</div>
-        </div>
-        <div>
-          <label><input id="vibrationToggle" type="checkbox" checked> Enable</label>
-        </div>
-      </div>
-
-      <div style="margin-top:12px" class="small muted">Note: Data is saved locally in your browser. To use cloud storage, we can add Firebase (I can add that exact code for you).</div>
-    </section>
-
-  </main>
-
-  <footer>Made for your project • Press Start and allow microphone on phone</footer>
-
-  <script>
-  // -------------------------
-  // Utility & state
-  // -------------------------
-  const routeButtons = document.querySelectorAll('.nav-btn');
-  const liveCard = document.getElementById('liveCard');
-  const chartCard = document.getElementById('chartCard');
-  const historyCard = document.getElementById('historyCard');
-  const settingsCard = document.getElementById('settingsCard');
-
-  function setRoute(route){
-    routeButtons.forEach(b=> b.classList.toggle('active', b.dataset.route===route));
-    liveCard.style.display = (route==='live') ? 'block' : 'none';
-    chartCard.style.display = (route==='live') ? 'block' : 'none';
-    historyCard.style.display = (route==='history') ? 'block' : 'none';
-    settingsCard.style.display = (route==='settings') ? 'block' : 'none';
+// Fixed Y-axis graph
+const ctx = document.getElementById("chartCanvas").getContext("2d");
+const chart = new Chart(ctx, {
+  type: "line",
+  data: {
+    labels: [],
+    datasets: [{
+      data: [],
+      borderColor: "#00f0ff",
+      backgroundColor: "rgba(0,240,255,0.12)",
+      borderWidth: 2,
+      tension: 0.4,
+      pointRadius: 0,
+      fill:true
+    }]
+  },
+  options:{
+    responsive:true,
+    animation:false,
+    scales:{
+      x:{ display:false },
+      y:{
+        min:0,
+        max:120,   // FIXED RANGE (no more expansion)
+        ticks:{ color:"#fff" }
+      }
+    },
+    plugins:{ legend:{ display:false } }
   }
-  routeButtons.forEach(btn=> btn.addEventListener('click', ()=> setRoute(btn.dataset.route)));
+});
 
-  // Splash
-  const splash = document.getElementById('splash');
-  document.getElementById('enterBtn').addEventListener('click', ()=> {
-    splash.classList.add('hide');
-    setTimeout(()=> splash.style.display='none', 700);
-  });
-  document.getElementById('skipBtn').addEventListener('click', ()=> {
-    splash.classList.add('hide');
-    setTimeout(()=> splash.style.display='none', 700);
-  });
+// Start/Stop Monitoring
+startBtn.onclick = () => {
+  if (!measuring) startMonitoring();
+  else stopMonitoring();
+};
 
-  // Theme
-  const themeToggle = document.getElementById('themeToggle');
-  const themeBtn = document.getElementById('themeBtn');
-  function applyTheme(t){
-    document.body.setAttribute('data-theme', t);
-    themeToggle.innerText = (t==='light') ? 'Dark' : 'Light';
-    localStorage.setItem('sm_theme', t);
+async function startMonitoring(){
+  try{
+    const stream = await navigator.mediaDevices.getUserMedia({audio:true});
+    audioCtx = new AudioContext();
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 2048;
+
+    const src = audioCtx.createMediaStreamSource(stream);
+    src.connect(analyser);
+    dataArray = new Float32Array(analyser.fftSize);
+
+    measuring = true;
+    startBtn.innerText = "Stop";
+    measureLoop();
+
+  }catch(e){
+    alert("Allow microphone to start.");
   }
-  // load saved
-  const savedTheme = localStorage.getItem('sm_theme') || 'dark';
-  applyTheme(savedTheme);
-  themeToggle.addEventListener('click', ()=> applyTheme(document.body.getAttribute('data-theme')==='dark' ? 'light' : 'dark'));
-  themeBtn.addEventListener('click', ()=> themeToggle.click());
+}
 
-  // Elements
-  const startBtn = document.getElementById('startBtn');
-  const exportBtn = document.getElementById('exportBtn');
-  const thresholdRange = document.getElementById('thresholdRange');
-  const thVal = document.getElementById('thVal');
-  const statusEl = document.getElementById('status');
-  const dbBig = document.getElementById('dbBig');
-  const dbText = document.getElementById('dbText');
-  const needle = document.getElementById('needle');
-  const maxValEl = document.getElementById('maxVal');
-  const minValEl = document.getElementById('minVal');
-  const avgValEl = document.getElementById('avgVal');
-  const countValEl = document.getElementById('countVal');
-  const saveSnapshotBtn = document.getElementById('saveSnapshot');
-  const clearBtn = document.getElementById('clearBtn');
-  const historyList = document.getElementById('historyList');
-  const exportLiveBtn = document.getElementById('exportBtn');
-  const autoThresholdCheckbox = document.getElementById('autoThreshold');
-  const vibrationToggle = document.getElementById('vibrationToggle');
-  thVal.innerText = thresholdRange.value;
+function stopMonitoring(){
+  measuring = false;
+  startBtn.innerText = "Start Monitoring";
+}
 
-  // audio state
-  let audioCtx=null, analyser=null, dataArray=null, measuring=false, rafId=null;
-  let readings=[]; // stores numeric dB values for current session
-  let threshold = Number(thresholdRange.value);
+function measureLoop(){
+  if (!measuring) return;
 
-  // chart
-  const liveCtx = document.getElementById('liveChart').getContext('2d');
-  const liveChart = new Chart(liveCtx, {
-    type:'line',
-    data:{labels:[], datasets:[{label:'dB',data:[], borderColor: 'rgba(11,243,222,0.95)', backgroundColor:'rgba(11,243,222,0.06)', tension:0.25, pointRadius:0, fill:true}]},
-    options:{animation:false,normalized:true,scales:{x:{display:false}, y:{suggestedMin:0,suggestedMax:120}} , plugins:{legend:{display:false}}}
-  });
+  analyser.getFloatTimeDomainData(dataArray);
+  let sum=0;
+  for (let i=0;i<dataArray.length;i++) sum+=dataArray[i]*dataArray[i];
 
-  // -------------------------
-  // audio & measurement
-  // -------------------------
-  async function startMonitoring(){
-    if (measuring) return;
-    try{
-      const stream = await navigator.mediaDevices.getUserMedia({audio:true});
-      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      analyser = audioCtx.createAnalyser();
-      analyser.fftSize = 2048;
-      const source = audioCtx.createMediaStreamSource(stream);
-      source.connect(analyser);
-      dataArray = new Float32Array(analyser.fftSize);
-      measuring = true;
-      startBtn.innerText='Stop';
-      statusEl.innerText='Monitoring';
-      measureLoop();
-    }catch(e){
-      alert('Allow microphone access and reload the page.');
-      console.error(e);
-    }
+  let rms = Math.sqrt(sum/dataArray.length);
+  let dB = 20*Math.log10(Math.max(rms, 1e-8));
+  let dbPos = Math.round((dB + 100) * 1.2);
+  dbPos = Math.max(0, Math.min(120, dbPos));
+
+  updateUI(dbPos);
+  requestAnimationFrame(measureLoop);
+}
+
+function updateUI(db){
+  dbVal.innerText = db + " dB";
+
+  const deg = (db/120)*360;
+  gaugeRing.style.background =
+    `conic-gradient(#00f0ff ${deg}deg, rgba(255,255,255,0.06) ${deg}deg)`;
+
+  readings.push(db);
+
+  if (readings.length>150){
+    readings.shift();
+    chart.data.labels.shift();
+    chart.data.datasets[0].data.shift();
   }
 
-  function stopMonitoring(){
-    measuring = false;
-    startBtn.innerText='Start';
-    statusEl.innerText='Stopped';
-    if (rafId) cancelAnimationFrame(rafId);
-    try{ if (audioCtx) audioCtx.suspend(); }catch(e){}
+  chart.data.labels.push("");
+  chart.data.datasets[0].data.push(db);
+  chart.update("none");
+
+  if (db >= threshold){
+    alertBox.style.display="block";
+    if (navigator.vibrate) navigator.vibrate(120);
+  } else {
+    alertBox.style.display="none";
   }
+}
 
-  function measureLoop(){
-    if (!measuring) return;
-    analyser.getFloatTimeDomainData(dataArray);
-    let sum=0;
-    for (let i=0;i<dataArray.length;i++) sum += dataArray[i]*dataArray[i];
-    let rms = Math.sqrt(sum / dataArray.length);
-    let dB = 20 * Math.log10(Math.max(rms, 1e-8)); // dBFS (negative)
-    let dbPos = Math.round((dB + 100) * 1.15); // map to positive approx
-    dbPos = Math.max(0, Math.min(140, dbPos));
-    // auto threshold helper
-    if (autoThresholdCheckbox.checked){
-      adaptThreshold();
-    }
-    handleReading(dbPos);
-    rafId = requestAnimationFrame(measureLoop);
-  }
+thresholdSlider.oninput = () => {
+  threshold = Number(thresholdSlider.value);
+  thVal.innerText = threshold;
+};
 
-  function adaptThreshold(){
-    // simple adaptive: set threshold = median of last 40 readings + 15
-    if (readings.length < 10) return;
-    const sample = readings.slice(-40);
-    const sorted = sample.slice().sort((a,b)=>a-b);
-    const median = sorted[Math.floor(sorted.length/2)];
-    threshold = Math.round(median + 15);
-    thresholdRange.value = threshold;
-    thVal.innerText = threshold;
-  }
-
-  function handleReading(db){
-    // store
-    readings.push(db);
-    if (readings.length>2000) readings.shift();
-
-    // update UI
-    dbBig.innerText = db + ' dB';
-    dbText.innerText = db + ' dB';
-    // needle rotate: map db 0..120 to -90..90 degrees
-    const angle = ((Math.max(0, Math.min(120, db)) / 120) * 180) - 90;
-    needle.setAttribute('transform', `translate(120,100) rotate(${angle})`);
-    // summary
-    const max = Math.max(...readings);
-    const min = Math.min(...readings);
-    const avg = Math.round(readings.reduce((a,b)=>a+b,0)/readings.length);
-    maxValEl.innerText = max;
-    minValEl.innerText = min;
-    avgValEl.innerText = avg;
-    countValEl.innerText = readings.length;
-
-    // chart
-    liveChart.data.labels.push('');
-    liveChart.data.datasets[0].data.push(db);
-    if (liveChart.data.labels.length > 150){
-      liveChart.data.labels.shift();
-      liveChart.data.datasets[0].data.shift();
-    }
-    liveChart.update('none');
-
-    // threshold check
-    if (db >= threshold){
-      showAlert(db);
-      if (vibrationToggle.checked && navigator.vibrate) navigator.vibrate(120);
-    } else {
-      clearAlertTemp();
-    }
-  }
-
-  // alerts
-  let alertTimeout = null;
-  function showAlert(db){
-    document.getElementById('status').innerText = 'ALERT: ' + db + ' dB';
-    document.getElementById('status').style.color = getComputedStyle(document.documentElement).getPropertyValue('--danger') || '#ff4d6d';
-    // small visual flash on header
-    document.querySelector('header').style.boxShadow = '0 8px 30px rgba(255,77,109,0.08)';
-    if (alertTimeout) clearTimeout(alertTimeout);
-    alertTimeout = setTimeout(()=> {
-      document.querySelector('header').style.boxShadow = '';
-    }, 600);
-  }
-  function clearAlertTemp(){
-    document.getElementById('status').innerText = 'Monitoring';
-    document.getElementById('status').style.color = '';
-  }
-
-  // -------------------------
-  // controls
-  // -------------------------
-  startBtn.addEventListener('click', ()=> {
-    if (!measuring) startMonitoring(); else stopMonitoring();
-  });
-
-  thresholdRange.addEventListener('input', ()=>{
-    threshold = Number(thresholdRange.value);
-    thVal.innerText = threshold;
-  });
-
-  clearBtn.addEventListener('click', ()=>{
-    if (confirm('Clear current session data?')) {
-      readings = [];
-      liveChart.data.labels = []; liveChart.data.datasets[0].data = [];
-      liveChart.update();
-      maxValEl.innerText = '--';
-      minValEl.innerText = '--';
-      avgValEl.innerText = '--';
-      countValEl.innerText = '0';
-    }
-  });
-
-  // snapshot & history persistence
-  function saveSessionToLocal(){
-    if (!readings.length) return null;
-    const dateKey = new Date().toISOString().slice(0,10);
-    const storage = JSON.parse(localStorage.getItem('sm_history') || '{}');
-    storage[dateKey] = storage[dateKey] || [];
-    // append last 800 readings
-    const toAppend = readings.slice(-800).map((v,i)=>({t:Date.now() - (readings.length - i)*250, db:v}));
-    storage[dateKey] = storage[dateKey].concat(toAppend);
-    localStorage.setItem('sm_history', JSON.stringify(storage));
-    return dateKey;
-  }
-
-  saveSnapshotBtn.addEventListener('click', ()=>{
-    const key = saveSessionToLocal();
-    if (key) {
-      alert('Snapshot saved for ' + key);
-      renderHistory();
-    } else alert('No data to save yet.');
-  });
-
-  // auto save every 5 minutes
-  setInterval(()=> { if (readings.length>0) saveSessionToLocal(); }, 5*60*1000);
-
-  // export PDF live
-  exportLiveBtn.addEventListener('click', ()=> exportPDFForReadings(readings, 'live'));
-
-  function exportPDFForReadings(array, label){
-    if (!array || !array.length) { alert('No data to export'); return; }
-    const dateKey = (label==='live') ? new Date().toISOString().slice(0,10) : label;
-    const max = Math.max(...array);
-    const min = Math.min(...array);
-    const avg = Math.round(array.reduce((a,b)=>a+b,0)/array.length);
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({unit:'mm',format:'a4'});
-    doc.setFontSize(16); doc.setTextColor(10,200,220);
-    doc.text('Sound Monitor — Report', 14, 18);
-    doc.setFontSize(11); doc.setTextColor(120,120,120);
-    doc.text('Date: ' + dateKey, 14, 28);
-    doc.setFontSize(12); doc.setTextColor(255,255,255);
-    doc.text('Max: ' + max + ' dB', 14, 42);
-    doc.text('Min: ' + min + ' dB', 14, 50);
-    doc.text('Avg: ' + avg + ' dB', 14, 58);
-    doc.text('Samples: ' + array.length, 14, 66);
-    // add chart image
-    try {
-      const img = document.getElementById('liveChart').toDataURL('image/png', 1.0);
-      doc.addImage(img, 'PNG', 14, 76, 180, 60);
-    } catch(e){ console.warn('chart image fail', e); }
-    doc.save('sound_report_' + dateKey + '.pdf');
-  }
-
-  // history rendering
-  function renderHistory(){
-    const storage = JSON.parse(localStorage.getItem('sm_history') || '{}');
-    const days = Object.keys(storage).sort((a,b)=>b.localeCompare(a));
-    historyList.innerHTML = '';
-    if (!days.length) {
-      historyList.innerHTML = '<div class="small muted">No saved days yet. Click "Save Snapshot" to save current session.</div>';
-      return;
-    }
-    days.forEach(day=>{
-      const dayArr = storage[day];
-      const max = Math.max(...dayArr.map(x=>x.db));
-      const min = Math.min(...dayArr.map(x=>x.db));
-      const avg = Math.round(dayArr.reduce((a,b)=>a+b.db,0)/dayArr.length);
-      const item = document.createElement('div');
-      item.className = 'history-item';
-      item.innerHTML = `<div><strong>${day}</strong><div class="small muted">Samples: ${dayArr.length}</div></div>
-        <div style="display:flex;gap:8px;align-items:center">
-          <div class="small muted">Avg ${avg} dB</div>
-          <button class="btn ghost" data-day="${day}" data-action="view">View</button>
-          <button class="btn ghost" data-day="${day}" data-action="export">PDF</button>
-          <button class="btn ghost" data-day="${day}" data-action="delete">Delete</button>
-        </div>`;
-      historyList.appendChild(item);
-    });
-
-    // attach listeners
-    historyList.querySelectorAll('button').forEach(btn=>{
-      btn.addEventListener('click', (e)=>{
-        const day = btn.dataset.day;
-        const action = btn.dataset.action;
-        const storage = JSON.parse(localStorage.getItem('sm_history') || '{}');
-        if (action==='view'){
-          // show day in chart (temporary)
-          const arr = storage[day].map(x=>x.db);
-          liveChart.data.labels = arr.map(_=>'');
-          liveChart.data.datasets[0].data = arr;
-          liveChart.update();
-          setRoute('live');
-          alert('Viewing data for ' + day + ' (chart updated). Use Export PDF to save.');
-        } else if (action==='export'){
-          const arr = storage[day].map(x=>x.db);
-          exportPDFForReadings(arr, day);
-        } else if (action==='delete'){
-          if (confirm('Delete data for ' + day + '?')) {
-            delete storage[day];
-            localStorage.setItem('sm_history', JSON.stringify(storage));
-            renderHistory();
-          }
-        }
-      });
-    });
-  }
-
-  // initial render of history
-  renderHistory();
-
-  // clear storage button (not shown UI; could be added)
-  // document.getElementById('clearStorageBtn').addEventListener('click', ()=>{ localStorage.removeItem('sm_history'); renderHistory(); });
-
-  // when page unload, try to save small snapshot
-  window.addEventListener('beforeunload', ()=> { if (readings.length>50) saveSessionToLocal(); });
-
-  // settings
-  autoThresholdCheckbox.addEventListener('change', ()=> {
-    if (autoThresholdCheckbox.checked) alert('Auto-threshold enabled (will adapt over time)');
-  });
-
-  // navigation default
-  setRoute('live');
-
-  // keyboard shortcut (for desktop demo)
-  document.addEventListener('keydown', (e)=> {
-    if (e.key===' '){
-      e.preventDefault();
-      if (!measuring) startMonitoring(); else stopMonitoring();
-    }
-  });
-
-  // Optional: Firebase integration (outline)
-  /*
-  // To enable Firebase:
-  // 1) Create Firebase project, enable Realtime Database or Firestore
-  // 2) Add your firebase config below and uncomment imports at top
-  // 3) Use these helper functions to push and read data
-
-  // Example:
-  // firebase.initializeApp(firebaseConfig);
-  // const db = firebase.database();
-  function saveToFirebase(dateKey, payload){
-    // db.ref('sound_data/' + dateKey).push(payload);
-  }
-  */
-
-  // small UX: if theme is saved as light, show toggle text accordingly
-  document.addEventListener('DOMContentLoaded', ()=> {
-    // load vibration saved
-    const vib = localStorage.getItem('sm_vib');
-    if (vib !== null) vibrationToggle.checked = (vib === 'true');
-    vibrationToggle.addEventListener('change', ()=> localStorage.setItem('sm_vib', vibrationToggle.checked));
-
-    // load auto threshold
-    const at = localStorage.getItem('sm_auto_threshold');
-    if (at !== null) autoThresholdCheckbox.checked = (at === 'true');
-    autoThresholdCheckbox.addEventListener('change', ()=> localStorage.setItem('sm_auto_threshold', autoThresholdCheckbox.checked));
-
-    // load saved threshold
-    const savedTh = localStorage.getItem('sm_threshold');
-    if (savedTh) {
-      thresholdRange.value = savedTh; threshold = Number(savedTh); thVal.innerText = savedTh;
-    }
-    thresholdRange.addEventListener('change', ()=> {
-      localStorage.setItem('sm_threshold', thresholdRange.value);
-    });
-  });
-  </script>
+</script>
 
 </body>
 </html>
-
