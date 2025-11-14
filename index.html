@@ -1,864 +1,332 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Neon Sound Dashboard</title>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Neon Sound Dashboard</title>
 
-    <!-- Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <!-- jsPDF for PDF export -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <!-- Firebase (optional) -->
-    <!--
-  <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-database-compat.js"></script>
-  -->
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <!-- jsPDF for PDF export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
-    <style>
-      :root {
-        --bg: #05060a;
-        --card: rgba(255, 255, 255, 0.03);
-        --neon: #00f0ff;
-        --accent: #8a4cff;
-        --danger: #ff4d6d;
-        --glass-border: rgba(255, 255, 255, 0.06);
-        --muted: rgba(255, 255, 255, 0.5);
-        --glass: linear-gradient(
-          135deg,
-          rgba(255, 255, 255, 0.03),
-          rgba(255, 255, 255, 0.01)
-        );
-        --radius: 14px;
-      }
-      * {
-        box-sizing: border-box;
-      }
-      body {
-        margin: 0;
-        min-height: 100vh;
-        font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto,
-          "Helvetica Neue", Arial;
-        background: radial-gradient(
-            1200px 600px at 10% 10%,
-            rgba(0, 240, 255, 0.03),
-            transparent 5%
-          ),
-          radial-gradient(
-            1000px 500px at 90% 90%,
-            rgba(138, 76, 255, 0.03),
-            transparent 5%
-          ),
-          var(--bg);
-        color: #e9f7fb;
-        -webkit-font-smoothing: antialiased;
-        -moz-osx-font-smoothing: grayscale;
-        padding: 20px;
-      }
+  <style>
+    :root{
+      --bg: #05060a;
+      --card: rgba(255,255,255,0.03);
+      --neon: #00f0ff;
+      --danger: #ff4d6d;
+      --muted: rgba(255,255,255,0.5);
+      --glass-border: rgba(255,255,255,0.06);
+      --radius: 14px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      min-height:100vh;
+      font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto;
+      background: #05060a;
+      color: #e9f7fb;
+      padding:20px;
+    }
 
-      header {
-        display: flex;
-        gap: 12px;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: 18px;
-      }
-      .logo {
-        display: flex;
-        gap: 12px;
-        align-items: center;
-      }
-      .circle {
-        width: 44px;
-        height: 44px;
-        border-radius: 10px;
-        background: linear-gradient(
-          135deg,
-          rgba(0, 240, 255, 0.12),
-          rgba(138, 76, 255, 0.08)
-        );
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        box-shadow: 0 6px 18px rgba(0, 240, 255, 0.06),
-          inset 0 -6px 18px rgba(255, 255, 255, 0.02);
-        border: 1px solid rgba(255, 255, 255, 0.03);
-      }
-      h1 {
-        font-size: 18px;
-        margin: 0;
-      }
-      p.subtitle {
-        margin: 0;
-        color: var(--muted);
-        font-size: 13px;
-      }
+    header{
+      display:flex;
+      gap:12px;
+      align-items:center;
+      justify-content:space-between;
+      margin-bottom:18px;
+    }
+    h1{font-size:18px;margin:0;color:#00f0ff}
+    p.subtitle{margin:0;color:var(--muted);font-size:13px}
 
-      .container {
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: 16px;
-      }
+    .container{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap:16px;
+    }
+    @media(min-width:880px){
+      .container{grid-template-columns: 450px 1fr}
+    }
 
-      /* Larger screens -> dashboard two columns */
-      @media (min-width: 880px) {
-        .container {
-          grid-template-columns: 450px 1fr;
-        }
-      }
+    .card{
+      background:var(--card);
+      border-radius: var(--radius);
+      padding:16px;
+      border:1px solid var(--glass-border);
+      backdrop-filter: blur(6px);
+    }
 
-      .card {
-        background: var(--card);
-        border-radius: var(--radius);
-        padding: 16px;
-        border: 1px solid var(--glass-border);
-        backdrop-filter: blur(6px);
-        box-shadow: 0 6px 30px rgba(0, 0, 0, 0.6);
-      }
+    .gauge {
+      display:flex;
+      gap:12px;
+      align-items:center;
+      justify-content:space-between;
+    }
 
-      /* Gauge area */
-      .gauge {
-        display: flex;
-        gap: 12px;
-        align-items: center;
-        justify-content: space-between;
-      }
-      .gauge-left {
-        width: 180px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        position: relative;
-      }
+    .gauge-ring{
+      width:160px;height:160px;border-radius:50%;
+      background: conic-gradient(#00f0ff 0deg, rgba(255,255,255,0.06) 0deg);
+      display:grid;place-items:center;
+    }
+    .gauge-center{
+      width:120px;height:120px;border-radius:50%;
+      background:rgba(255,255,255,0.03);
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      border:1px solid rgba(255,255,255,0.04);
+    }
+    .dbVal{font-size:32px;font-weight:700;color:#00f0ff}
+    .dbLabel{font-size:12px;color:var(--muted)}
 
-      /* Circular gauge using conic-gradient */
-      .gauge-ring {
-        width: 160px;
-        height: 160px;
-        border-radius: 50%;
-        background: conic-gradient(
-          var(--neon) 0deg,
-          rgba(255, 255, 255, 0.06) 0deg
-        );
-        display: grid;
-        place-items: center;
-        box-shadow: 0 6px 30px rgba(0, 240, 255, 0.06),
-          inset 0 -6px 30px rgba(0, 0, 0, 0.3);
-        border: 1px solid rgba(255, 255, 255, 0.05);
-      }
-      .gauge-center {
-        width: 120px;
-        height: 120px;
-        border-radius: 50%;
-        background: linear-gradient(
-          180deg,
-          rgba(255, 255, 255, 0.02),
-          rgba(255, 255, 255, 0.01)
-        );
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        text-align: center;
-        border: 1px solid rgba(255, 255, 255, 0.03);
-      }
-      .dbVal {
-        font-size: 30px;
-        font-weight: 700;
-        color: var(--neon);
-      }
-      .dbLabel {
-        font-size: 12px;
-        color: var(--muted);
-        margin-top: 4px;
-      }
+    .alerts .alert{
+      margin-top:10px;
+      padding:12px;border-radius:10px;
+      background:rgba(255,77,109,0.15);
+      border:1px solid rgba(255,77,109,0.3);
+      color:#ff4d6d;
+      font-weight:700;
+    }
 
-      .gauge-right {
-        flex: 1;
-        padding-left: 8px;
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-      }
-      .small-row {
-        display: flex;
-        gap: 8px;
-        align-items: center;
-        justify-content: space-between;
-      }
+    footer{text-align:center;color:var(--muted);font-size:13px;margin-top:12px}
+  </style>
+</head>
+<body>
 
-      .btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        background: linear-gradient(
-          90deg,
-          rgba(0, 240, 255, 0.12),
-          rgba(138, 76, 255, 0.1)
-        );
-        border: 1px solid rgba(255, 255, 255, 0.04);
-        padding: 10px 12px;
-        border-radius: 10px;
-        color: var(--neon);
-        font-weight: 600;
-        cursor: pointer;
-      }
-      .btn.ghost {
-        background: transparent;
-        border: 1px dashed rgba(255, 255, 255, 0.04);
-        color: var(--muted);
-      }
+<header>
+  <div>
+    <h1>Neon Sound Dashboard</h1>
+    <p class="subtitle">Real-time sound analysis</p>
+  </div>
+  <button id="btnStart" style="padding:10px 18px;background:#00f0ff;border:none;border-radius:10px;font-weight:600;color:#000">
+    Start Monitoring
+  </button>
+</header>
 
-      /* chart card */
-      .chart-wrap {
-        height: 300px;
-      }
+<main class="container">
 
-      /* alerts */
-      .alerts {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-      }
-      .alert {
-        padding: 12px;
-        border-radius: 10px;
-        background: linear-gradient(
-          90deg,
-          rgba(255, 77, 109, 0.08),
-          rgba(138, 76, 255, 0.03)
-        );
-        border: 1px solid rgba(255, 77, 109, 0.12);
-        color: var(--danger);
-        font-weight: 700;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-      }
-      .muted-text {
-        color: var(--muted);
-        font-size: 13px;
-      }
-
-      /* summary */
-      .summary-grid {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 10px;
-        margin-top: 10px;
-      }
-      .stat {
-        padding: 12px;
-        border-radius: 10px;
-        background: linear-gradient(
-          90deg,
-          rgba(255, 255, 255, 0.02),
-          rgba(255, 255, 255, 0.01)
-        );
-        border: 1px solid rgba(255, 255, 255, 0.03);
-        text-align: center;
-      }
-      .stat .n {
-        font-size: 18px;
-        font-weight: 800;
-        color: var(--neon);
-      }
-      .stat .t {
-        font-size: 12px;
-        color: var(--muted);
-        margin-top: 4px;
-      }
-
-      footer {
-        margin-top: 18px;
-        text-align: center;
-        color: var(--muted);
-        font-size: 13px;
-      }
-
-      /* tiny responsive tweaks */
-      @media (max-width: 480px) {
-        .gauge-left {
-          width: 140px;
-        }
-        .gauge-ring {
-          width: 120px;
-          height: 120px;
-        }
-        .gauge-center {
-          width: 86px;
-          height: 86px;
-        }
-        .dbVal {
-          font-size: 22px;
-        }
-      }
-    </style>
-  </head>
-  <body>
-    <header>
-      <div class="logo">
-        <div class="circle">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-            <path
-              d="M3 12h3M18 12h3M8 12a4 4 0 1 0 8 0"
-              stroke="url(#g)"
-              stroke-width="1.6"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            />
-          </svg>
-        </div>
-        <div>
-          <h1>Neon Sound Dashboard</h1>
-          <p class="subtitle">
-            Real-time noise monitor • phone-ready • neon UI
-          </p>
+  <!-- LEFT CARD -->
+  <section class="card">
+    <div class="gauge">
+      <div class="gauge-ring" id="gaugeRing">
+        <div class="gauge-center">
+          <div class="dbVal" id="dbValue">-- dB</div>
+          <div class="dbLabel">Current Level</div>
         </div>
       </div>
 
-      <div style="display: flex; gap: 8px; align-items: center">
-        <button id="btnStart" class="btn">Start Monitoring</button>
-        <button id="btnExport" class="btn ghost">Export PDF</button>
+      <div style="flex:1;padding-left:10px">
+        <label style="color:var(--muted);font-size:14px">Threshold</label>
+        <input id="thresholdInput" type="range" min="30" max="120" value="60" style="width:100%">
+        <span id="thVal" style="color:#00f0ff">60</span> dB
+
+        <div class="alerts" id="alertsPanel">
+          <p style="color:var(--muted)">Status: <span id="statusText">Idle</span></p>
+        </div>
+
+        <div style="margin-top:10px;color:var(--muted);font-size:14px">
+          <p>Max: <span id="maxVal" style="color:#00f0ff">--</span></p>
+          <p>Min: <span id="minVal" style="color:#00f0ff">--</span></p>
+          <p>Avg: <span id="avgVal" style="color:#00f0ff">--</span></p>
+          <p>Samples: <span id="countVal" style="color:#00f0ff">0</span></p>
+        </div>
       </div>
-    </header>
+    </div>
 
-    <main class="container">
-      <!-- Left column: Gauge + Alerts + Summary -->
-      <section class="card">
-        <div class="gauge">
-          <div class="gauge-left">
-            <div class="gauge-ring" id="gaugeRing">
-              <div class="gauge-center">
-                <div class="dbVal" id="dbValue">-- dB</div>
-                <div class="dbLabel">Current Level</div>
-              </div>
-            </div>
-          </div>
+    <footer>Allow microphone on phone for best accuracy</footer>
+  </section>
 
-          <div class="gauge-right">
-            <div class="small-row">
-              <div>
-                <div class="muted-text">Threshold</div>
-                <div style="margin-top: 6px">
-                  <input
-                    id="thresholdInput"
-                    type="range"
-                    min="30"
-                    max="120"
-                    value="60"
-                  />
-                  <div class="muted-text" style="margin-top: 6px">
-                    Set alert threshold: <span id="thVal">60</span> dB
-                  </div>
-                </div>
-              </div>
-              <div>
-                <div class="muted-text">Sampling</div>
-                <div style="margin-top: 6px" class="muted-text">
-                  Realtime (browser)
-                </div>
-              </div>
-            </div>
+  <!-- RIGHT CARD (GRAPH) -->
+  <section class="card">
+    <h3 style="margin:0 0 10px;color:#00f0ff">Live Graph</h3>
+    <canvas id="chartCanvas" height="260"></canvas>
+  </section>
 
-            <div style="margin-top: 10px" class="alerts" id="alertsPanel">
-              <div class="muted-text">
-                Status: <span id="statusText">Idle</span>
-              </div>
-            </div>
+</main>
 
-            <div class="summary-grid" style="margin-top: 12px">
-              <div class="stat">
-                <div class="n" id="maxVal">--</div>
-                <div class="t">Max (dB)</div>
-              </div>
-              <div class="stat">
-                <div class="n" id="minVal">--</div>
-                <div class="t">Min (dB)</div>
-              </div>
-              <div class="stat">
-                <div class="n" id="avgVal">--</div>
-                <div class="t">Avg (dB)</div>
-              </div>
-              <div class="stat">
-                <div class="n" id="countVal">0</div>
-                <div class="t">Samples</div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <footer>
-          Tip: Allow microphone and open site in your phone browser for best
-          accuracy.
-        </footer>
-      </section>
+<script>
+/* -------------------------------
+   JAVASCRIPT SECTION
+--------------------------------*/
 
-      <!-- Right column: Chart -->
-      <section class="card">
-        <h3 style="margin: 0 0 8px 0; color: var(--neon)">Live Sound Graph</h3>
-        <div class="chart-wrap">
-          <canvas id="chartCanvas"></canvas>
-        </div>
+let audioCtx = null;
+let analyser = null;
+let dataArray = null;
+let measuring = false;
+let readings = [];
+let threshold = 60;
 
-        <div
-          style="
-            display: flex;
-            gap: 8px;
-            margin-top: 12px;
-            align-items: center;
-            justify-content: flex-end;
-          "
-        >
-          <button id="btnClear" class="btn ghost">Clear Data</button>
-          <button id="btnSaveLocal" class="btn">Save Snapshot</button>
-        </div>
+const SAMPLE_RATE_MS = 200;
 
-        <div style="margin-top: 12px; color: var(--muted); font-size: 13px">
-          <strong>Note:</strong> This app uses the Web Audio API to compute
-          approximate dB from microphone RMS. Values are good for relative
-          monitoring and alerts.
-        </div>
-      </section>
-    </main>
+// UI elements
+const btnStart = document.getElementById("btnStart");
+const dbValueEl = document.getElementById("dbValue");
+const gaugeRing = document.getElementById("gaugeRing");
+const thresholdInput = document.getElementById("thresholdInput");
+const thVal = document.getElementById("thVal");
+const alertsPanel = document.getElementById("alertsPanel");
+const statusText = document.getElementById("statusText");
+const maxValEl = document.getElementById("maxVal");
+const minValEl = document.getElementById("minVal");
+const avgValEl = document.getElementById("avgVal");
+const countValEl = document.getElementById("countVal");
 
-    <script>
-      // ------------------------
-      // Configuration & state
-      // ------------------------
-      const SAMPLE_RATE_MS = 200; // update interval for reading (ms)
-      let threshold = 60;
-      let audioCtx = null;
-      let analyser = null;
-      let dataArray = null;
-      let mediaStreamSource = null;
-      let measuring = false;
-      let rafId = null;
-
-      // Data storage (in-memory; also saved to localStorage daily)
-      const readings = []; // {t:timestamp, db: number}
-
-      // Chart.js setup
-      const ctx = document.getElementById("chartCanvas").getContext("2d");
-      const CHART_MAX_POINTS = 100;
-      const chart = new Chart(ctx, {
-        type: "line",
-        data: {
-          labels: [],
-          datasets: [
-            {
-              label: "dB",
-              data: [],
-              borderWidth: 2,
-              tension: 0.25,
-              fill: true,
-              backgroundColor: "rgba(0,240,255,0.06)",
-              borderColor: "rgba(0,240,255,0.9)",
-              pointRadius: 0,
-            },
-          ],
-        },
-        options: {
-          animation: false,
-          responsive: true,
-          maintainAspectRatio: false,
-          scales: {
+// Chart.js setup
+const ctx = document.getElementById("chartCanvas").getContext("2d");
+const chart = new Chart(ctx, {
+    type: "line",
+    data: {
+        labels: [],
+        datasets: [{
+            label: "dB",
+            data: [],
+            borderColor: "#00f0ff",
+            backgroundColor: "rgba(0,240,255,0.15)",
+            borderWidth: 2,
+            tension: 0.2,
+            pointRadius: 0,
+            fill: true
+        }]
+    },
+    options: {
+        animation: false,
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
             x: { display: false },
             y: {
-              suggestedMin: 0,
-              suggestedMax: 120,
-            },
-          },
-          plugins: {
-            legend: { display: false },
-          },
+                suggestedMin: 0,
+                suggestedMax: 120,
+                ticks: { color: "#fff" }
+            }
         },
-      });
-
-      // ------------------------
-      // UI Elements
-      // ------------------------
-      const btnStart = document.getElementById("btnStart");
-      const btnExport = document.getElementById("btnExport");
-      const btnClear = document.getElementById("btnClear");
-      const btnSaveLocal = document.getElementById("btnSaveLocal");
-      const dbValueEl = document.getElementById("dbValue");
-      const gaugeRing = document.getElementById("gaugeRing");
-      const thSlider = document.getElementById("thresholdInput");
-      const thDisplay = document.getElementById("thVal");
-      const alertsPanel = document.getElementById("alertsPanel");
-      const statusText = document.getElementById("statusText");
-      const maxValEl = document.getElementById("maxVal");
-      const minValEl = document.getElementById("minVal");
-      const avgValEl = document.getElementById("avgVal");
-      const countValEl = document.getElementById("countVal");
-
-      thDisplay.innerText = threshold;
-
-      thSlider.addEventListener("input", (e) => {
-        threshold = Number(e.target.value);
-        thDisplay.innerText = threshold;
-      });
-
-      // ------------------------
-      // Audio: setup & measure
-      // ------------------------
-      async function startMonitoring() {
-        if (measuring) return;
-        try {
-          // get mic stream (HTTPS required)
-          const stream = await navigator.mediaDevices.getUserMedia({
-            audio: true,
-          });
-          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-          analyser = audioCtx.createAnalyser();
-          analyser.fftSize = 2048;
-          mediaStreamSource = audioCtx.createMediaStreamSource(stream);
-          mediaStreamSource.connect(analyser);
-
-          dataArray = new Float32Array(analyser.fftSize);
-          measuring = true;
-          statusText.innerText = "Monitoring";
-          btnStart.innerText = "Stop Monitoring";
-          measureLoop();
-        } catch (err) {
-          alert(
-            "Could not access microphone. Please allow microphone permission and reload the page."
-          );
-          console.error(err);
-        }
-      }
-
-      function stopMonitoring() {
-        measuring = false;
-        statusText.innerText = "Stopped";
-        btnStart.innerText = "Start Monitoring";
-        if (rafId) cancelAnimationFrame(rafId);
-        // stop audio context (optional)
-        if (audioCtx) {
-          try {
-            audioCtx.suspend();
-          } catch (e) {}
-        }
-      }
-
-      btnStart.addEventListener("click", () => {
-        if (!measuring) startMonitoring();
-        else stopMonitoring();
-      });
-
-      function measureLoop() {
-        // read time-domain data, compute RMS
-        analyser.getFloatTimeDomainData(dataArray);
-        let sum = 0;
-        for (let i = 0; i < dataArray.length; i++) {
-          sum += dataArray[i] * dataArray[i];
-        }
-        let rms = Math.sqrt(sum / dataArray.length);
-        // convert to dBFS approx: dB = 20 * log10(rms)
-        // add tiny floor to avoid -Infinity
-        let dB = 20 * Math.log10(Math.max(rms, 1e-8));
-        // dB will be negative (dBFS), convert scale to approximate positive dB:
-        // Empirical mapping: dB_pos = (dB + 100) (this gives roughly 0..100 range)
-        let dbPos = Math.round((dB + 100) * 1.0);
-        // clamp
-        if (!isFinite(dbPos)) dbPos = 0;
-        dbPos = Math.max(0, Math.min(140, dbPos));
-
-        // push reading every SAMPLE_RATE_MS (we're running per animation frame, so throttle)
-        const now = Date.now();
-        readings.push({ t: now, db: dbPos });
-        // trim memory
-        if (readings.length > 2000) readings.shift();
-
-        // update UI
-        updateUI(dbPos);
-
-        // continue loop
-        rafId = requestAnimationFrame(measureLoop);
-      }
-
-      // ------------------------
-      // UI updates & chart
-      // ------------------------
-      let lastChartUpdate = 0;
-      function updateUI(db) {
-        // gauge
-        dbValueEl.innerText = db + " dB";
-        const pct = Math.min(100, Math.round((db / 120) * 100));
-        const deg = Math.round((pct / 100) * 360);
-        gaugeRing.style.background = `conic-gradient(${dbColor(
-          db
-        )} ${deg}deg, rgba(255,255,255,0.03) ${deg}deg)`;
-
-        // alert if threshold crossed
-        if (db >= threshold) {
-          showAlert(`Threshold exceeded: ${db} dB`, true);
-          // vibration on many phones
-          if (navigator.vibrate) navigator.vibrate(120);
-        } else {
-          // if currently an alert showing, show OK
-          clearAlertIfOk();
-        }
-
-        // update summary stats (using readings for this session/day)
-        const arr = readings.map((r) => r.db);
-        const max = arr.length ? Math.max(...arr) : 0;
-        const min = arr.length ? Math.min(...arr) : 0;
-        const avg = arr.length
-          ? Math.round(arr.reduce((a, b) => a + b, 0) / arr.length)
-          : 0;
-        maxValEl.innerText = max || "--";
-        minValEl.innerText = min || "--";
-        avgValEl.innerText = avg || "--";
-        countValEl.innerText = arr.length;
-
-        // update chart throttled to SAMPLE_RATE_MS
-        const now = Date.now();
-        if (now - lastChartUpdate > SAMPLE_RATE_MS) {
-          lastChartUpdate = now;
-          addPointToChart(db);
-        }
-      }
-
-      let currentAlertEl = null;
-      function showAlert(text, important) {
-        if (currentAlertEl) {
-          currentAlertEl.innerText = text;
-          return;
-        }
-        const el = document.createElement("div");
-        el.className = "alert";
-        el.innerText = text;
-        alertsPanel.appendChild(el);
-        currentAlertEl = el;
-      }
-      function clearAlertIfOk() {
-        if (!currentAlertEl) {
-          // show green status small message
-          statusText.innerText = "All good";
-          return;
-        }
-        // remove after short time
-        setTimeout(() => {
-          if (currentAlertEl && alertsPanel.contains(currentAlertEl)) {
-            alertsPanel.removeChild(currentAlertEl);
-            currentAlertEl = null;
-            statusText.innerText = "Monitoring";
-          }
-        }, 1200);
-      }
-
-      function dbColor(db) {
-        // return gradient color stop based on db
-        if (db < threshold - 10) return "rgba(0,240,255,0.95)";
-        if (db < threshold) return "rgba(138,76,255,0.95)";
-        return "rgba(255,77,109,0.95)";
-      }
-
-      function addPointToChart(db) {
-        const labels = chart.data.labels;
-        const data = chart.data.datasets[0].data;
-        labels.push("");
-        data.push(db);
-        if (labels.length > CHART_MAX_POINTS) {
-          labels.shift();
-          data.shift();
-        }
-        chart.update("none");
-      }
-
-      // ------------------------
-      // Local storage daily save & export
-      // ------------------------
-      function saveDailyToLocal() {
-        // Save readings for today into localStorage keyed by date
-        if (!readings.length) return null;
-        const dateKey = new Date().toISOString().slice(0, 10); // yyyy-mm-dd
-        // load existing
-        const existing = JSON.parse(
-          localStorage.getItem("sound_history") || "{}"
-        );
-        existing[dateKey] = existing[dateKey] || [];
-        const todayArray = existing[dateKey];
-        // append only last N to avoid huge sizes
-        const toAppend = readings
-          .slice(-500)
-          .map((r) => ({ t: r.t, db: r.db }));
-        existing[dateKey] = todayArray.concat(toAppend);
-        localStorage.setItem("sound_history", JSON.stringify(existing));
-        return dateKey;
-      }
-
-      btnSaveLocal.addEventListener("click", () => {
-        const key = saveDailyToLocal();
-        if (key) {
-          alert("Snapshot saved locally for " + key);
-        } else alert("No data to save yet.");
-      });
-
-      btnClear.addEventListener("click", () => {
-        if (confirm("Clear current session data?")) {
-          readings.length = 0;
-          chart.data.labels = [];
-          chart.data.datasets[0].data = [];
-          chart.update();
-          maxValEl.innerText = "--";
-          minValEl.innerText = "--";
-          avgValEl.innerText = "--";
-          countValEl.innerText = "0";
-        }
-      });
-
-      // Export PDF (using jsPDF)
-      btnExport.addEventListener("click", async () => {
-        if (!readings.length) {
-          alert("No data to export");
-          return;
-        }
-        btnExport.disabled = true;
-        btnExport.innerText = "Generating...";
-
-        const dateKey = new Date().toISOString().slice(0, 10);
-        const max = Math.max(...readings.map((r) => r.db));
-        const min = Math.min(...readings.map((r) => r.db));
-        const avg = Math.round(
-          readings.reduce((a, b) => a + b.db, 0) / readings.length
-        );
-
-        // create simple PDF summary
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF({
-          orientation: "portrait",
-          unit: "mm",
-          format: "a4",
-        });
-        doc.setFontSize(16);
-        doc.setTextColor(0, 200, 230);
-        doc.text("Neon Sound Dashboard - Daily Report", 14, 18);
-        doc.setFontSize(11);
-        doc.setTextColor(180, 180, 190);
-        doc.text(`Date: ${dateKey}`, 14, 28);
-        doc.setTextColor(255, 255, 255);
-        doc.setFontSize(12);
-        doc.text(`Max Level: ${max} dB`, 14, 42);
-        doc.text(`Min Level: ${min} dB`, 14, 52);
-        doc.text(`Avg Level: ${avg} dB`, 14, 62);
-        doc.text(`Total samples: ${readings.length}`, 14, 72);
-
-        // add a small mini-graph (render chart canvas to image)
-        try {
-          const imgData = chart.toBase64Image();
-          doc.addImage(imgData, "PNG", 14, 82, 180, 60);
-        } catch (e) {
-          console.warn("Could not render chart image in PDF", e);
-        }
-
-        doc.setFontSize(10);
-        doc.setTextColor(160, 160, 160);
-        doc.text("Generated from Neon Sound Dashboard", 14, 155);
-        const fileName = `sound_report_${dateKey}.pdf`;
-        doc.save(fileName);
-
-        btnExport.disabled = false;
-        btnExport.innerText = "Export PDF";
-      });
-
-      // ------------------------
-      // Helpers: Save automatically every N minutes (optional)
-      // ------------------------
-      // autoSave every 5 minutes
-      setInterval(() => {
-        if (readings.length > 0) saveDailyToLocal();
-      }, 5 * 60 * 1000);
-
-      // ------------------------
-      // Optional: Firebase saving (outline)
-      // ------------------------
-      /* 
-    // To enable Firebase:
-    // 1) Create a Firebase project, enable Realtime Database
-    // 2) Get your firebaseConfig object and paste below
-    // 3) uncomment the imports at top and the code below
-    const firebaseConfig = {
-      apiKey: "...",
-      authDomain: "...",
-      projectId: "...",
-      storageBucket: "...",
-      messagingSenderId: "...",
-      appId: "...",
-      databaseURL: "https://<your-db>.firebaseio.com"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-
-    function saveToFirebase(dateKey){
-      const payload = readings.map(r => ({t:r.t, db:r.db}));
-      return db.ref('sound_data/' + dateKey).push(payload);
+        plugins: { legend: { display: false } }
     }
-    */
-      // ------------------------
+});
 
-      // ------------------------
-      // Small UX: try to auto-start on page load (user still must interact to allow audio on some browsers)
-      // ------------------------
-      window.addEventListener("load", () => {
-        // load last threshold if saved
-        const savedTh = localStorage.getItem("sound_threshold");
-        if (savedTh) {
-          threshold = Number(savedTh);
-          thSlider.value = threshold;
-          thDisplay.innerText = threshold;
-        }
-      });
+/* -------------------------------
+   START / STOP MONITORING
+--------------------------------*/
+btnStart.addEventListener("click", () => {
+    if (!measuring) startMonitoring();
+    else stopMonitoring();
+});
 
-      // Save threshold on change
-      thSlider.addEventListener("change", () =>
-        localStorage.setItem("sound_threshold", String(threshold))
-      );
+async function startMonitoring() {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
-      // Keep page active focus - resume audio if needed
-      document.addEventListener("visibilitychange", () => {
-        if (
-          document.visibilityState === "visible" &&
-          measuring &&
-          audioCtx &&
-          audioCtx.state === "suspended"
-        ) {
-          audioCtx.resume();
-        }
-      });
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        analyser = audioCtx.createAnalyser();
 
-      // ------------------------
-      // Small safety: if user navigates away, stop audio to release mic
-      // ------------------------
-      window.addEventListener("beforeunload", () => {
-        if (audioCtx && audioCtx.state !== "closed") {
-          try {
-            audioCtx.close();
-          } catch (e) {}
-        }
-      });
+        analyser.fftSize = 2048;
+        dataArray = new Float32Array(analyser.fftSize);
 
-      // ------------------------
-      // Final: show quick startup hint
-      // ------------------------
-      (function showHint() {
-        const hint = document.createElement("div");
-        hint.style.position = "fixed";
-        hint.style.left = "14px";
-        hint.style.bottom = "14px";
-        hint.style.padding = "10px 12px";
-        hint.style.borderRadius = "10px";
-        hint.style.background =
-          "linear-gradient(90deg, rgba(0,240,255,0.06), rgba(138,76,255,0.03))";
-        hint.style.border = "1px solid rgba(255,255,255,0.03)";
-        hint.style.color = "var(--neon)";
-        hint.style.fontSize = "13px";
-        hint.style.backdropFilter = "blur(4px)";
-        hint.innerText = "Press Start Monitoring and Allow Microphone";
-        document.body.appendChild(hint);
-        setTimeout(() => hint.remove(), 7000);
-      })();
-    </script>
-  </body>
+        const source = audioCtx.createMediaStreamSource(stream);
+        source.connect(analyser);
+
+        measuring = true;
+        btnStart.innerText = "Stop Monitoring";
+        statusText.innerText = "Monitoring";
+
+        measureLoop();
+
+    } catch (err) {
+        alert("Allow microphone access for the website to work.");
+        console.error(err);
+    }
+}
+
+function stopMonitoring() {
+    measuring = false;
+    statusText.innerText = "Stopped";
+    btnStart.innerText = "Start Monitoring";
+}
+
+/* -------------------------------
+   MAIN MEASUREMENT LOOP
+--------------------------------*/
+function measureLoop() {
+    if (!measuring) return;
+
+    analyser.getFloatTimeDomainData(dataArray);
+
+    let sum = 0;
+    for (let i = 0; i < dataArray.length; i++) sum += dataArray[i] * dataArray[i];
+
+    let rms = Math.sqrt(sum / dataArray.length);
+    let dB = 20 * Math.log10(Math.max(rms, 1e-8));
+
+    let dbPos = Math.round((dB + 100) * 1.2); // approx positive range
+    dbPos = Math.max(0, Math.min(140, dbPos));
+
+    updateUI(dbPos);
+
+    requestAnimationFrame(measureLoop);
+}
+
+/* -------------------------------
+   UPDATE UI & CHART
+--------------------------------*/
+function updateUI(db) {
+    // text
+    dbValueEl.innerText = db + " dB";
+
+    // gauge ring
+    const deg = (db / 120) * 360;
+    gaugeRing.style.background = `conic-gradient(#00f0ff ${deg}deg, rgba(255,255,255,0.06) ${deg}deg)`;
+
+    // alert logic
+    if (db >= threshold) showAlert("Threshold Exceeded: " + db + " dB");
+    else clearAlert();
+
+    // summary calculations
+    readings.push(db);
+    maxValEl.innerText = Math.max(...readings);
+    minValEl.innerText = Math.min(...readings);
+    avgValEl.innerText = Math.round(readings.reduce((a,b)=>a+b,0) / readings.length);
+    countValEl.innerText = readings.length;
+
+    // chart update
+    chart.data.labels.push("");
+    chart.data.datasets[0].data.push(db);
+    if (chart.data.labels.length > 100) {
+        chart.data.labels.shift();
+        chart.data.datasets[0].data.shift();
+    }
+    chart.update("none");
+}
+
+/* -------------------------------
+   ALERT SYSTEM
+--------------------------------*/
+let alertShown = false;
+
+function showAlert(msg) {
+    if (!alertShown) {
+        let div = document.createElement("div");
+        div.className = "alert";
+        div.innerText = msg;
+        alertsPanel.appendChild(div);
+        alertShown = true;
+    }
+}
+
+function clearAlert() {
+    if (alertShown) {
+        alertsPanel.innerHTML = `<p style="color:var(--muted)">Status: <span id="statusText">Monitoring</span></p>`;
+        alertShown = false;
+    }
+}
+
+/* -------------------------------
+   THRESHOLD CONTROL
+--------------------------------*/
+thresholdInput.addEventListener("input", () => {
+    threshold = Number(thresholdInput.value);
+    thVal.innerText = threshold;
+});
+</script>
+
+</body>
 </html>
+
